@@ -1,0 +1,149 @@
+{
+  "schema_version": 2,
+  "campaign_name": "swedish_mfh_1961_1975_v2",
+  "seed": 42,
+  "energyplus_version": "EnergyPlus, Version 24.2.0-94a887817b",
+  "n_total": 10000,
+  "n_per_city": 2000,
+  "anchors_per_city": 100,
+  "matched_pairs_per_city": {
+    "shape": 380,
+    "orientation": 285,
+    "massing": 285
+  },
+  "cities": [
+    {
+      "city": "Malmö",
+      "slug": "malmo",
+      "epw": "/Users/ssanjay/GitHub/ParametricBuildingGenerator/epw/SWE_SN_Malmo.026350_TMYx.2004-2018.epw",
+      "wmo": "026350",
+      "lat": 55.61,
+      "lon": 13
+    },
+    {
+      "city": "Gothenburg",
+      "slug": "gothenburg",
+      "epw": "/Users/ssanjay/GitHub/ParametricBuildingGenerator/epw/SWE_VG_Gothenburg-Landvetter.AP.025260_TMYx.2004-2018.epw",
+      "wmo": "025260",
+      "lat": 57.67,
+      "lon": 12.3
+    },
+    {
+      "city": "Uppsala",
+      "slug": "uppsala",
+      "epw": "/Users/ssanjay/GitHub/ParametricBuildingGenerator/epw/SWE_UP_Uppsala-Arna.AP.024580_TMYx.2004-2018.epw",
+      "wmo": "024580",
+      "lat": 59.9,
+      "lon": 17.59
+    },
+    {
+      "city": "Umeå",
+      "slug": "umea",
+      "epw": "/Users/ssanjay/GitHub/ParametricBuildingGenerator/epw/SWE_VB_Umea.AP.022860_TMYx.2004-2018.epw",
+      "wmo": "022860",
+      "lat": 63.82,
+      "lon": 20.26
+    },
+    {
+      "city": "Kiruna",
+      "slug": "kiruna",
+      "epw": "/Users/ssanjay/GitHub/ParametricBuildingGenerator/epw/SWE_NB_Kiruna.AP.020440_TMYx.2004-2018.epw",
+      "wmo": "020440",
+      "lat": 67.84,
+      "lon": 20.33
+    }
+  ],
+  "bounds": {
+    "conditioned_floor_area_m2": [
+      600,
+      27000
+    ],
+    "floors": [
+      2,
+      12
+    ],
+    "footprint_area_m2": [
+      250,
+      7500
+    ],
+    "floor_height_m": [
+      2.6,
+      3.1
+    ],
+    "outer_aspect_ratio": [
+      1.2,
+      4.5
+    ],
+    "orientation_deg": [
+      0,
+      360
+    ],
+    "wall_u_nominal": [
+      0.18,
+      1
+    ],
+    "top_envelope_u_nominal": [
+      0.1,
+      1.05
+    ],
+    "ground_floor_u_nominal": [
+      0.2,
+      1.25
+    ],
+    "window_u": [
+      1.1,
+      3
+    ],
+    "thermal_bridge_fraction": [
+      0.1,
+      0.35
+    ],
+    "solar_shading_factor": [
+      0.4,
+      0.7
+    ],
+    "heating_setpoint_c": [
+      19.5,
+      22.5
+    ],
+    "occupant_density_per_m2": [
+      0.012,
+      0.022
+    ],
+    "equipment_gain_w_m2": [
+      1.2,
+      2.2
+    ],
+    "dhw_kwh_m2_year": [
+      18,
+      25
+    ],
+    "mean_wwr": [
+      0.1,
+      0.3
+    ],
+    "wwr_contrasts": [
+      -0.05,
+      0.05
+    ],
+    "envelope_infiltration_ach": [
+      0.1,
+      0.5
+    ],
+    "natural_exchange_ach_S": [
+      0.2,
+      0.7
+    ],
+    "mechanical_vent_l_s_m2": [
+      0.25,
+      0.5
+    ],
+    "hrv_sensible_efficiency_FTX": [
+      0.45,
+      0.8
+    ]
+  },
+  "core_repository": "/Users/ssanjay/GitHub/ParametricBuildingGenerator",
+  "legacy_csv": "/Users/ssanjay/GitHub/ParametricBuildingGenerator/results/lhs_25x50/runs.csv",
+  "kiva_profile": "energyplus_24_2_default_soil"
+}

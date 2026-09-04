@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "epsm_workflows"
+version = "2.0.0"
+requires-python = ">=3.11"
+dependencies = ["epsm_core==2.0.0", "duckdb>=1.5,<2", "pyarrow>=23,<24", "pandas>=2.2,<3", "scipy>=1.17,<2", "scikit-learn>=1.8,<2", "pyproj>=3.6,<4"]
+
+[project.scripts]
+epsm-campaign = "epsm_workflows.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+epsm_workflows = ["data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
