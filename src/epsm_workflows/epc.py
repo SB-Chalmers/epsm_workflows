@@ -1,24 +1,48 @@
-"""Explicit Swedish EPC/Lantmäteriet ingestion outside the simulation library."""
+"""Publication-contract EPC ingestion. Certificate energy is never broadcast to buildings."""
+
+import csv
+import re
+from collections import defaultdict
+from datetime import date
+from pathlib import Path
 
 import duckdb
-from pyproj import Transformer
-from shapely import from_wkb, from_wkt
+import pyarrow.parquet as pq
+from pyproj import CRS, Transformer
+from shapely import STRtree, from_wkb, from_wkt
 from shapely.ops import transform
 
-from epsm_core import BuildingBuilder, Footprint
+from epsm_core import BuildingBuilder, BuildingPart, Footprint, GeometryPolicy, prepare_geometry
 
 
-def footprints(geometry, *, source_crs, target_crs="EPSG:3006"):
-    """Preserve every polygon and interior ring; never silently select the first part."""
+def prepare_footprints(geometry, *, source_crs, target_crs="EPSG:3006", policy=GeometryPolicy()):
     if isinstance(geometry, (bytes, bytearray, memoryview)):
         geometry = from_wkb(bytes(geometry))
     elif isinstance(geometry, str):
         geometry = from_wkt(geometry)
+    crs = CRS.from_user_input(target_crs)
+    if not crs.is_projected or any(a.unit_conversion_factor != 1 for a in crs.axis_info):
+        raise ValueError("Geometry preparation requires a projected metre CRS")
     tx = Transformer.from_crs(source_crs, target_crs, always_xy=True)
-    geometry = transform(tx.transform, geometry)
-    if geometry.geom_type not in ("Polygon", "MultiPolygon") or not geometry.is_valid:
-        raise ValueError("Input must be a valid Polygon or MultiPolygon")
-    parts = geometry.geoms if geometry.geom_type == "MultiPolygon" else (geometry,)
+    projected = transform(tx.transform, geometry)
+    prepared = prepare_geometry(projected, policy)
+    artifact = prepared.artifact(
+        source_crs=str(source_crs), target_crs=str(target_crs), transformation=tx.description
+    )
+    from shapely.geometry import mapping
+
+    artifact["original_source_geometry"] = mapping(geometry)
+    artifact["original_source_wkb_hex"] = geometry.wkb_hex
+    artifact["transformation_definition"] = tx.definition
+    return prepared, artifact
+
+
+def footprints(geometry, *, source_crs, target_crs="EPSG:3006"):
+    result, _ = prepare_footprints(geometry, source_crs=source_crs, target_crs=target_crs)
+    if result.status != "accepted":
+        raise ValueError(f"Footprint preparation {result.status}: {result.reasons}")
+    g = result.cleaned_geometry
+    parts = list(g.geoms) if g.geom_type == "MultiPolygon" else [g]
     return tuple(
         Footprint(
             exterior=tuple(p.exterior.coords)[:-1],
@@ -28,74 +52,257 @@ def footprints(geometry, *, source_crs, target_crs="EPSG:3006"):
     )
 
 
-def load_records(
-    db_path, *, municipality=None, building_category=None, year_min=None, year_max=None, limit=100
-):
-    filters = []
-    params = []
-    for column, value in (("IdKommun", municipality), ("EgenByggnadsKat", building_category)):
-        if value is not None:
-            filters.append("e." + column + "=?")
-            params.append(value)
-    if year_min is not None:
-        filters.append("e.EgenNybyggAr>=?")
-        params.append(year_min)
-    if year_max is not None:
-        filters.append("e.EgenNybyggAr<=?")
-        params.append(year_max)
-    query = """SELECT f.objektidentitet, f.geom AS footprint_wkb, e.* FROM footprints f
-        LEFT JOIN (SELECT * FROM epc QUALIFY row_number() OVER
-        (PARTITION BY FormularId ORDER BY IdHuvudadress DESC)=1) e ON f.FormularId=e.FormularId"""
-    if filters:
-        query += " WHERE " + " AND ".join(filters)
-    if limit is not None:
-        query += " LIMIT ?"
-        params.append(int(limit))
-    with duckdb.connect(str(db_path), read_only=True) as db:
-        cursor = db.execute(query, params)
-        columns = [c[0] for c in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+def _rows(db, query, params):
+    cursor = db.execute(query, params)
+    names = [d[0] for d in cursor.description]
+    return [dict(zip(names, row)) for row in cursor.fetchall()]
+
+
+def load_records(publication_root, *, municipality, limit=100):
+    """Return certificate records with complete global relations and bounded geometries.
+
+    Municipality selects a candidate cohort, never truncates a certificate's linked
+    buildings. Global catalogue counts, history indicators and all subjects survive.
+    No latest-certificate inference is made from formular_id or address identifiers.
+    """
+    root = Path(publication_root)
+    if not re.fullmatch(r"\d{4}", municipality) or not 1 <= limit <= 10000:
+        raise ValueError("Use a four-digit municipality and limit in 1..10000")
+    partition = root / f"accepted_links/kommunkod={municipality}/part.parquet"
+    catalogue = root / "catalogue/accepted_links.parquet"
+    subjects = root / "catalogue/epc_subject_results.parquet"
+    with duckdb.connect() as db:
+        selected = (
+            db.execute(
+                "SELECT DISTINCT formular_id FROM read_parquet(?) ORDER BY formular_id LIMIT ?",
+                [str(partition), limit],
+            )
+            .fetchnumpy()["formular_id"]
+            .tolist()
+        )
+        if not selected:
+            return []
+        relations = _rows(
+            db,
+            "SELECT * FROM read_parquet(?) WHERE formular_id IN (SELECT unnest(?)) ORDER BY formular_id,epc_subject_id,building_id",
+            [str(catalogue), selected],
+        )
+        subject_rows = _rows(
+            db,
+            "SELECT * FROM read_parquet(?) WHERE formular_id IN (SELECT unnest(?)) ORDER BY formular_id,epc_subject_id",
+            [str(subjects), selected],
+        )
+    required = {
+        "subject_to_footprint_count",
+        "certificate_to_footprint_count",
+        "building_to_certificate_count",
+    }
+    if relations and not required <= relations[0].keys():
+        raise ValueError(
+            "Requires global publication catalogue cardinalities, not partition-local counts"
+        )
+    ids_by_municipality = defaultdict(set)
+    for row in relations:
+        ids_by_municipality[str(row["building_municipality_code"]).zfill(4)].add(row["building_id"])
+    buildings = {}
+    for code, ids in ids_by_municipality.items():
+        path = root / f"building_results/kommunkod={code}/part.parquet"
+        table = pq.read_table(path, partitioning=None, filters=[("building_id", "in", sorted(ids))])
+        for row in table.to_pylist():
+            row["source_partition"] = str(path)
+            buildings[row["building_id"]] = row
+    by_certificate = defaultdict(list)
+    by_subject = defaultdict(list)
+    for row in relations:
+        by_certificate[row["formular_id"]].append(row)
+    for row in subject_rows:
+        by_subject[row["formular_id"]].append(row)
+    result = []
+    for certificate_id in selected:
+        links = by_certificate[certificate_id]
+        ids = sorted({r["building_id"] for r in links})
+        if any(r["certificate_to_footprint_count"] != len(ids) for r in links):
+            raise ValueError("Global certificate cardinality does not reconcile")
+        if any(i not in buildings for i in ids):
+            raise ValueError("Published link lacks its building result")
+        result.append(
+            dict(
+                formular_id=certificate_id,
+                subjects=by_subject[certificate_id],
+                accepted_links=links,
+                buildings=[buildings[i] for i in ids],
+                certificate_to_footprint_count=len(ids),
+                publication_root=str(root),
+                measurements=[],
+                measurement_mapping_status="unverified",
+            )
+        )
+    return result
+
+
+def raw_certificate_rows(paths, certificate_ids, *, encoding, source_schema):
+    """Streaming raw rows joined solely on the publication's verified FormularId key.
+
+    Original string values and row identity are retained. Units, calculation versions
+    and measurement dates are deliberately not inferred before workbook verification.
+    """
+    ids = {str(i) for i in certificate_ids}
+    for path in map(Path, paths):
+        with path.open(encoding=encoding, newline="") as stream:
+            reader = csv.DictReader(stream, delimiter="|")
+            if "FormularId" not in (reader.fieldnames or []):
+                raise ValueError(f"Missing verified FormularId key: {path}")
+            for row_number, row in enumerate(reader, 2):
+                if row["FormularId"] in ids:
+                    yield dict(
+                        formular_id=int(row["FormularId"]),
+                        source_file=str(path),
+                        source_row=row_number,
+                        source_schema=source_schema,
+                        original_values=row,
+                        units=None,
+                        calculation_version=None,
+                        measurement_dates=None,
+                        mapping_status="unverified",
+                    )
 
 
 def building_from_record(record, *, source_crs, assumption_profile, assumptions):
-    """EPC Atemp remains an observation, not a silent rescaling of measured geometry."""
-    fp = footprints(record["footprint_wkb"], source_crs=source_crs)
-    known = dict(
-        identifier=str(record["objektidentitet"]),
-        geometry={"footprints": [f.model_dump(mode="json") for f in fp], "source_crs": "EPSG:3006"},
+    if record["certificate_to_footprint_count"] != 1 or len(record["buildings"]) != 1:
+        raise ValueError("One BuildingSpec requires a reviewed single-building certificate")
+    source = record["buildings"][0]
+    result, artifact = prepare_footprints(source["geometry"], source_crs=source_crs)
+    if result.status != "accepted":
+        raise ValueError(f"Geometry requires review: {result.reasons}")
+    fps = footprints(source["geometry"], source_crs=source_crs)
+    part_assumptions = assumptions["geometry"]["parts"]
+    if len(part_assumptions) != len(fps):
+        raise ValueError(
+            "Explicit part/storey assumptions required for each disconnected footprint"
+        )
+    outline = {
+        "Fasad": "facade",
+        "Takkant": "roof_edge_proxy",
+        "Illustrativt läge": "illustrative",
+    }.get(source["insamlingslage"])
+    if outline is None:
+        raise ValueError("Unknown outline collection position requires review")
+    parts = [
+        BuildingPart.model_validate(
+            {**a, "footprint": fp.model_dump(), "outline_kind": outline, "outline_reviewed": False}
+        )
+        for a, fp in zip(part_assumptions, fps)
+    ]
+    building = BuildingBuilder(
+        assumption_profile=assumption_profile, assumptions=assumptions
+    ).build(
+        identifier=source["building_id"],
+        geometry={"parts": [p.model_dump() for p in parts], "source_crs": "EPSG:3006"},
+        source=f"epc_join:{record['formular_id']}",
     )
-    floors = record.get("EgenAntalPlan")
-    if floors is not None and int(floors) > 0:
-        known["geometry"]["floors"] = int(floors)
-    builder = BuildingBuilder(assumption_profile=assumption_profile, assumptions=assumptions)
-    building = builder.build(source=f"EPC:{record.get('FormularId')}", **known)
-    observed = record.get("EgenAtemp")
-    report = dict(
-        observed_atemp_m2=observed,
-        geometry_atemp_m2=building.geometry.conditioned_floor_area_m2,
-        source_crs=source_crs,
-        target_crs="EPSG:3006",
+    return building, dict(
+        geometry_preparation=artifact,
+        observed_atemp_m2=None,
+        geometric_conditioned_area_m2=building.geometry.conditioned_floor_area_m2,
+        measurement_mapping_status=record["measurement_mapping_status"],
     )
-    if observed and observed > 0:
-        report["atemp_relative_difference"] = (
-            building.geometry.conditioned_floor_area_m2 - observed
-        ) / observed
-    return building, report
 
 
 def nearby(records, target, *, source_crs, radius_m=500):
-    """Exact distance in a projected metre CRS, including nearby polygon edges."""
+    """Indexed neighborhood query over a caller-bounded partition/window."""
     from shapely.geometry import MultiPolygon
 
-    origin = MultiPolygon(
-        [p.polygon for p in footprints(target["footprint_wkb"], source_crs=source_crs)]
-    )
-    return [
-        r
+    geometries = [
+        MultiPolygon([p.polygon for p in footprints(r["geometry"], source_crs=source_crs)])
         for r in records
-        if r["objektidentitet"] != target["objektidentitet"]
-        and MultiPolygon(
-            [p.polygon for p in footprints(r["footprint_wkb"], source_crs=source_crs)]
-        ).distance(origin)
-        <= radius_m
     ]
+    origin = MultiPolygon(
+        [p.polygon for p in footprints(target["geometry"], source_crs=source_crs)]
+    )
+    tree = STRtree(geometries)
+    return [
+        records[i]
+        for i in tree.query(origin, predicate="dwithin", distance=radius_m)
+        if records[i]["building_id"] != target["building_id"]
+    ]
+
+
+def reporting_regime(certificate_date):
+    value = (
+        date.fromisoformat(certificate_date)
+        if isinstance(certificate_date, str)
+        else certificate_date
+    )
+    if value < date(2019, 1, 1):
+        return "specific_energy_pre_2019"
+    if value < date(2020, 9, 1):
+        return "primary_energy_2019_weights"
+    return "primary_energy_2020_weights"
+
+
+def study_eligibility(record, review, *, mapping_verified=False):
+    reasons = []
+    if not mapping_verified:
+        reasons.append("boverket_mapping_workbooks_unverified")
+    if record["certificate_to_footprint_count"] != 1:
+        reasons.append("multiple_buildings_for_certificate")
+    if not review.get("reviewer") or not review.get("reviewed_at"):
+        reasons.append("building_review_missing")
+    for b in record["buildings"]:
+        if b["insamlingslage"] != "Fasad" and not (
+            b["insamlingslage"] == "Takkant" and review.get("roof_proxy_approved")
+        ):
+            reasons.append("outline_not_high_confidence")
+    start, end = review.get("measurement_start"), review.get("measurement_end")
+    if not start or not end:
+        reasons.append("measurement_period_unverified")
+    else:
+        start, end = date.fromisoformat(start), date.fromisoformat(end)
+        if start.year != end.year:
+            reasons.append("cross_year_measurement_window_deferred")
+        elif (start.month, start.day, end.month, end.day) != (1, 1, 12, 31):
+            reasons.append("incomplete_calendar_year")
+    if review.get("energy_boundary") != "delivered_district_heat_heat_and_dhw":
+        reasons.append("delivery_accounting_incomparable")
+    if not review.get("delivery_losses_accounted"):
+        reasons.append("ideal_demand_not_delivered_energy")
+    if review.get("measurement_basis") != "individual_building_meter":
+        reasons.append("individual_building_measurement_unverified")
+    if not review.get("normal_use_alignment_verified"):
+        reasons.append("normal_use_alignment_unverified")
+    if not review.get("source_totals_reconciled"):
+        reasons.append("source_energy_totals_unverified")
+    if not review.get("weather_provenance"):
+        reasons.append("measurement_year_weather_unverified")
+    return dict(
+        formular_id=record["formular_id"],
+        eligible=not reasons,
+        reasons=sorted(set(reasons)),
+        observed_atemp_m2=review.get("observed_atemp_m2"),
+        source_schemas=sorted({s["source_schemas"] for s in record["subjects"]}),
+    )
+
+
+def study_report(records, reviews=(), *, mapping_verified=False):
+    lookup = {r["formular_id"]: r for r in reviews}
+    cases = [
+        study_eligibility(r, lookup.get(r["formular_id"], {}), mapping_verified=mapping_verified)
+        for r in records
+    ]
+    quotas = {
+        schema: dict(
+            required=6,
+            eligible=sum(c["eligible"] and c["source_schemas"] == [schema] for c in cases),
+        )
+        for schema in ("fore_v260", "efter_v260")
+    }
+    return dict(
+        status="eligible_cohort"
+        if all(q["eligible"] >= 6 for q in quotas.values())
+        else "ineligible_cohort",
+        mapping_workbook_gate="verified" if mapping_verified else "unverified",
+        quotas=quotas,
+        cases=cases,
+        comparison_results=[],
+        note="No EPC energy comparison is accepted until mapping, review, weather and delivery gates pass",
+    )

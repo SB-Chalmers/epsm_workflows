@@ -1,0 +1,209 @@
+{
+  "source_geometry": {
+    "type": "MultiPolygon",
+    "coordinates": [
+      [
+        [
+          [
+            320157.27,
+            6405259.01
+          ],
+          [
+            320157.884,
+            6405255.135
+          ],
+          [
+            320168.538,
+            6405187.917
+          ],
+          [
+            320182.08,
+            6405190.062
+          ],
+          [
+            320170.812,
+            6405261.159
+          ],
+          [
+            320158.104,
+            6405259.144
+          ],
+          [
+            320157.27,
+            6405259.01
+          ]
+        ]
+      ]
+    ]
+  },
+  "cleaned_geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          320157.27,
+          6405259.01
+        ],
+        [
+          320168.538,
+          6405187.917
+        ],
+        [
+          320182.08,
+          6405190.062
+        ],
+        [
+          320170.812,
+          6405261.159
+        ],
+        [
+          320157.27,
+          6405259.01
+        ]
+      ]
+    ]
+  },
+  "source_wkb_hex": "0106000000010000000103000000010000000700000048E17A14758A13410AD7A3C0226F5841C74B3789778A13410AD7A3C8216F5841D578E926A28A1341C520B0FA106F58411F85EB51D88A1341D9CEF783116F584191ED7C3FAB8A1341560E2D4A236F5841DBF97E6A788A1341C74B37C9226F584148E17A14758A13410AD7A3C0226F5841",
+  "source_crs": "EPSG:3006",
+  "target_crs": "EPSG:3006",
+  "transformation": "axis order change (2D) + axis order change (2D)",
+  "policy": {
+    "version": "conservative-metric-1",
+    "precision_m": 0.001,
+    "simplification_m": 0.05,
+    "max_displacement_m": 0.1,
+    "max_area_fraction": 0.005,
+    "max_perimeter_fraction": 0.01,
+    "protected_vertices": [],
+    "edge_properties": []
+  },
+  "status": "accepted",
+  "reasons": [],
+  "stages": [
+    "exact_normalization",
+    "coordinate_precision",
+    "simplification"
+  ],
+  "metrics": {
+    "boundary_displacement_m": 0.001630899386016247,
+    "area_change_fraction": 1.7609307434595475e-05,
+    "perimeter_change_fraction": 9.812833171899424e-09,
+    "source_area_m2": 986.9782659979227,
+    "cleaned_area_m2": 986.9608859942055,
+    "source_perimeter_m": 171.3870959562188,
+    "cleaned_perimeter_m": 171.3870942744258,
+    "source_topology": [
+      1,
+      0,
+      0
+    ],
+    "cleaned_topology": [
+      1,
+      0,
+      0
+    ]
+  },
+  "edge_lineage": [
+    {
+      "facade_id": "p0.r0.e0",
+      "start": [
+        320157.27,
+        6405259.01
+      ],
+      "end": [
+        320168.538,
+        6405187.917
+      ],
+      "source_edges": [
+        "p0.r0.e0",
+        "p0.r0.e1"
+      ],
+      "changed": true
+    },
+    {
+      "facade_id": "p0.r0.e1",
+      "start": [
+        320168.538,
+        6405187.917
+      ],
+      "end": [
+        320182.08,
+        6405190.062
+      ],
+      "source_edges": [
+        "p0.r0.e2"
+      ],
+      "changed": false
+    },
+    {
+      "facade_id": "p0.r0.e2",
+      "start": [
+        320182.08,
+        6405190.062
+      ],
+      "end": [
+        320170.812,
+        6405261.159
+      ],
+      "source_edges": [
+        "p0.r0.e3"
+      ],
+      "changed": false
+    },
+    {
+      "facade_id": "p0.r0.e3",
+      "start": [
+        320170.812,
+        6405261.159
+      ],
+      "end": [
+        320157.27,
+        6405259.01
+      ],
+      "source_edges": [
+        "p0.r0.e4",
+        "p0.r0.e5"
+      ],
+      "changed": true
+    }
+  ],
+  "original_source_geometry": {
+    "type": "MultiPolygon",
+    "coordinates": [
+      [
+        [
+          [
+            320157.27,
+            6405259.01
+          ],
+          [
+            320157.884,
+            6405255.135
+          ],
+          [
+            320168.538,
+            6405187.917
+          ],
+          [
+            320182.08,
+            6405190.062
+          ],
+          [
+            320170.812,
+            6405261.159
+          ],
+          [
+            320158.104,
+            6405259.144
+          ],
+          [
+            320157.27,
+            6405259.01
+          ]
+        ]
+      ]
+    ]
+  },
+  "original_source_wkb_hex": "0106000000010000000103000000010000000700000048E17A14758A13410AD7A3C0226F5841C74B3789778A13410AD7A3C8216F5841D578E926A28A1341C520B0FA106F58411F85EB51D88A1341D9CEF783116F584191ED7C3FAB8A1341560E2D4A236F5841DBF97E6A788A1341C74B37C9226F584148E17A14758A13410AD7A3C0226F5841",
+  "transformation_definition": "proj=noop ellps=GRS80"
+}

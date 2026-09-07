@@ -7,7 +7,7 @@ import pandas as pd
 
 from epsm_core import BuildingSpec
 
-FEATURE_VERSION = "epsm_core_v2.0"
+FEATURE_VERSION = "building-demand"
 FEATURES = (
     "footprint_area_m2",
     "perimeter_m",
@@ -58,6 +58,11 @@ def frame(store):
         m = json.loads(metaj)
         r = json.loads(json.loads(reportj)["report_json"])
         g, a, e = b.geometry, b.airflow, b.envelope
+        occupied = [p for p in g.parts if p.conditioned]
+        base_area = sum(p.footprint.area_m2 for p in occupied)
+        floor_area = sum(p.footprint.area_m2 * p.floors for p in occupied)
+        volume = sum(p.footprint.area_m2 * p.storey_elevations_m[-1] for p in occupied)
+        roof_topologies = {g.roof_for(p).topology for p in g.parts}
         row = dict(
             run_id=rid,
             **m,
@@ -67,8 +72,9 @@ def frame(store):
             perimeter_m=r["perimeter_m"],
             conditioned_floor_area_m2=g.conditioned_floor_area_m2,
             conditioned_volume_m3=g.conditioned_volume_m3,
-            floors=g.floors,
-            floor_height_m=g.floor_height_m,
+            # Footprint-weighted storey count and floor-area-weighted storey height.
+            floors=floor_area / base_area if base_area else 0,
+            floor_height_m=volume / floor_area if floor_area else 0,
             orientation_sin=np.sin(np.radians(g.orientation_deg)),
             orientation_cos=np.cos(np.radians(g.orientation_deg)),
             wall_u=e.wall.u_value_w_m2k,
@@ -88,7 +94,7 @@ def frame(store):
             dhw_kwh_m2_year=b.use.dhw_kwh_m2_year,
             latitude_deg=b.climate.latitude_deg,
             longitude_deg=b.climate.longitude_deg,
-            roof=e.roof_topology,
+            roof=next(iter(roof_topologies)) if len(roof_topologies) == 1 else "mixed",
             topology=a.topology,
             shape=m["requested"].get("shape", "rectangle"),
             renovation_condition=m["requested"].get("renovation_condition", "anchor"),

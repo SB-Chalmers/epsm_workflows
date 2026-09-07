@@ -1,13 +1,11 @@
 from dataclasses import replace
-import json
-from pathlib import Path
 
 import numpy as np
 import pytest
+from epsm_workflows.store import CampaignStore
 
 from epsm_core import SimulationResult
 from epsm_core.compiler import CompilationReport
-from epsm_workflows.store import CampaignStore
 
 
 def test_conflict_and_incomplete(tmp_path):
@@ -36,6 +34,7 @@ def test_atomic_completion_and_corruption(tmp_path):
     report = CompilationReport(
         run_id=rid,
         compiler_version="test",
+        compiler_sha256="d" * 64,
         engine_version="test",
         engine_sha256="a",
         schema_sha256="b",

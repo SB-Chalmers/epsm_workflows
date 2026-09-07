@@ -1,0 +1,14 @@
+{
+  "raw_unique_certificates": 2090,
+  "exploratory_candidates": 228,
+  "candidate_years": {
+    "('fore_v260', 2017)": 52,
+    "('efter_v260', 2018)": 121,
+    "('efter_v260', 2017)": 5,
+    "('efter_v260', 2019)": 22,
+    "('efter_v260', 2020)": 3,
+    "('efter_v260', 2024)": 25
+  },
+  "selected": 12,
+  "high_confidence_eligible": 0
+}

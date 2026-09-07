@@ -1,0 +1,97 @@
+{
+  "study": "Gothenburg 1955–1975 apartment buildings; exploratory untuned baseline v1",
+  "frozen_at_utc": "2026-09-06T00:14:16.314336+00:00",
+  "fitted_parameters": 0,
+  "selection": {
+    "municipality": "1480",
+    "construction_years": [
+      1955,
+      1975
+    ],
+    "residential_percent": 100,
+    "ventilation": "F only",
+    "heated_basement_floors": 0,
+    "minimum_above_ground_floors": 2,
+    "geometry_area_to_atemp_range": [
+      0.75,
+      1.25
+    ],
+    "single_building_certificate": true,
+    "measurement_period": "complete calendar year",
+    "quota_per_schema": 6,
+    "year_rule": "most qualifying records per schema, earlier year breaks ties",
+    "ordering": "ascending SHA256(epsm-epc-baseline-1:FormularId)",
+    "repeated_buildings": "excluded across both strata",
+    "allocated_old_records": "exploratory only",
+    "roof_edge_outlines": "unadjusted proxy; exploratory only"
+  },
+  "target": "reported delivered district heat for heating plus DHW, before automatic normal-year correction",
+  "primary_energy_comparison": "not performed; normal-year correction, property electricity and regime-specific accounting unresolved",
+  "raw_meter_comparison": "not established: old values allocated; newer values can include normal-use adjustments",
+  "assumptions": {
+    "wall_u_w_m2k": 0.41,
+    "top_u_w_m2k": 0.2,
+    "ground_u_w_m2k": 0.26,
+    "window_u_w_m2k": 2.22,
+    "envelope_source": "ARCHIVE/FINDINGS/FINDINGS.md §4.1 TABULA reference; literature-informed assumptions, not surveyed buildings",
+    "thermal_bridge_uplift_fraction": 0.25,
+    "wwr": 0.2,
+    "effective_shgc": 0.3,
+    "roof": "compact, assumed for all cases",
+    "basement": "none modelled; no heated basement declared does not prove no unheated basement",
+    "storey_height_m": 2.8,
+    "heating_setpoint_c": 21,
+    "infiltration_ach": 0.1,
+    "mechanical_ventilation_l_s_m2_atemp": 0.35,
+    "household_internal_gain_w_m2_atemp": 0.002397260273972603,
+    "occupant_density_per_m2_atemp": 0.025,
+    "occupant_activity_w": 120,
+    "occupancy_fraction": 0.5833333333333334,
+    "dhw_kwh_m2_atemp": 25,
+    "use_note": "fixed historical BEN-era DHW baseline and conventional household/person assumptions, not observed occupant behaviour",
+    "ground_temperature_monthly_c": [
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18,
+      18
+    ],
+    "ground_source": "EnergyPlus simple Ground building-surface boundary, uncalibrated",
+    "space_efficiency": 1,
+    "dhw_efficiency": 1,
+    "airing_kwh_m2": 4,
+    "net_distribution_loss_kwh_m2": 5,
+    "delivery_note": "simplified building-boundary district heat; 5 kWh/m² is assumed net unrecovered distribution/VVC loss, not gross VVC loss",
+    "context_shading": "omitted; self-shading retained",
+    "renovation_history": "not inferred from EPC recommendations or value year",
+    "area": "footprints unchanged; gains, airflow and DHW use reported Atemp via density conversion"
+  },
+  "sensitivity": {
+    "net_distribution_loss_kwh_m2": [
+      0,
+      10
+    ],
+    "weather": "same frozen models with actual 2017/2018 Gothenburg and Landvetter TMYx 2004–2018; spatial and year differences confounded"
+  },
+  "metrics": [
+    "MAE",
+    "RMSE",
+    "MAPE",
+    "median APE",
+    "signed aggregate bias",
+    "R²",
+    "within ±20% descriptive count"
+  ],
+  "metric_units": [
+    "annual kWh/building",
+    "annual kWh/m² reported Atemp"
+  ],
+  "inference": "small selected engineering pilot, not independent national holdout; no ASHRAE monthly acceptance claim"
+}

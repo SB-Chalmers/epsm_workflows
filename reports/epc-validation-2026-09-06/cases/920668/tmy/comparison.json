@@ -1,0 +1,57 @@
+{
+  "formular_id": "920668",
+  "weather": "tmy",
+  "schema": "efter_v260",
+  "year": 2018,
+  "run_directory": "/private/tmp/epsm-epc-validation/energyplus/920668/tmy",
+  "status": "success",
+  "scalars": {
+    "space_heating_demand_kwh": 641184.4352541127,
+    "space_heating_demand_eui_kwh_m2": 83.86622104351632,
+    "cooling_demand_kwh": 0.0,
+    "cooling_demand_eui_kwh_m2": 0.0,
+    "dhw_load_kwh": 174446.23993187735,
+    "dhw_load_eui_kwh_m2": 22.817376894900644,
+    "ideal_thermal_load_kwh": 815630.67518599,
+    "ideal_thermal_load_eui_kwh_m2": 106.68359793841695,
+    "annual_absolute_ground_transfer_kwh": 22294.28739651939
+  },
+  "delivery": {
+    "space_heating_delivery_kwh": 669048.4352541127,
+    "dhw_delivery_kwh": 174446.23993187735,
+    "net_distribution_loss_kwh": 34830.0,
+    "delivered_district_heat_kwh": 878324.67518599
+  },
+  "delivery_inputs": {
+    "space_heat_kwh": 641184.4352541127,
+    "dhw_kwh": 174446.23993187735,
+    "atemp_m2": 6966.0,
+    "space_efficiency": 1,
+    "dhw_efficiency": 1,
+    "airing_kwh_m2": 4
+  },
+  "reported_kwh": 739250.0,
+  "predicted_kwh": 878324.67518599,
+  "atemp_m2": 6966.0,
+  "reported_kwh_m2": 106.12259546368074,
+  "predicted_kwh_m2": 126.08737800545364,
+  "error_percent": 18.81294219627867,
+  "monthly_space_heat_kwh": [
+    103878.03136087053,
+    88003.04133354986,
+    86088.35178861022,
+    53240.34032280867,
+    28657.459516374747,
+    11157.526716892979,
+    6117.604271460629,
+    10729.039765758134,
+    25994.825191095464,
+    54102.649002007725,
+    76761.13168468955,
+    96454.43429999414
+  ],
+  "loss_sensitivity": {
+    "0": 843494.67518599,
+    "10": 913154.67518599
+  }
+}

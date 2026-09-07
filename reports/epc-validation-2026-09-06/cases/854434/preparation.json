@@ -1,0 +1,191 @@
+{
+  "source_geometry": {
+    "type": "MultiPolygon",
+    "coordinates": [
+      [
+        [
+          [
+            324035.296,
+            6411902.943
+          ],
+          [
+            324021.964,
+            6411890.809
+          ],
+          [
+            324028.637,
+            6411883.477
+          ],
+          [
+            324041.97,
+            6411895.61
+          ],
+          [
+            324035.296,
+            6411902.943
+          ]
+        ]
+      ]
+    ]
+  },
+  "cleaned_geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          324021.964,
+          6411890.809
+        ],
+        [
+          324028.637,
+          6411883.477
+        ],
+        [
+          324041.97,
+          6411895.61
+        ],
+        [
+          324035.296,
+          6411902.943
+        ],
+        [
+          324021.964,
+          6411890.809
+        ]
+      ]
+    ]
+  },
+  "source_wkb_hex": "01060000000100000001030000000100000005000000BE9F1A2F0DC71341AC1C5ABC9F755841E5D022DBD7C61341F0A7C6B39C7558415EBA498CF2C61341022B87DE9A75584114AE47E127C71341713D0AE79D755841BE9F1A2F0DC71341AC1C5ABC9F755841",
+  "source_crs": "EPSG:3006",
+  "target_crs": "EPSG:3006",
+  "transformation": "axis order change (2D) + axis order change (2D)",
+  "policy": {
+    "version": "conservative-metric-1",
+    "precision_m": 0.001,
+    "simplification_m": 0.05,
+    "max_displacement_m": 0.1,
+    "max_area_fraction": 0.005,
+    "max_perimeter_fraction": 0.01,
+    "protected_vertices": [],
+    "edge_properties": []
+  },
+  "status": "accepted",
+  "reasons": [],
+  "stages": [
+    "exact_normalization",
+    "coordinate_precision",
+    "simplification"
+  ],
+  "metrics": {
+    "boundary_displacement_m": 2.3283064365386963e-10,
+    "area_change_fraction": 0.0,
+    "perimeter_change_fraction": 1.271468104773406e-16,
+    "source_area_m2": 178.73346850020033,
+    "cleaned_area_m2": 178.73346850020033,
+    "source_perimeter_m": 55.88364608538325,
+    "cleaned_perimeter_m": 55.88364608538324,
+    "source_topology": [
+      1,
+      0,
+      0
+    ],
+    "cleaned_topology": [
+      1,
+      0,
+      0
+    ]
+  },
+  "edge_lineage": [
+    {
+      "facade_id": "p0.r0.e0",
+      "start": [
+        324021.964,
+        6411890.809
+      ],
+      "end": [
+        324028.637,
+        6411883.477
+      ],
+      "source_edges": [
+        "p0.r0.e1"
+      ],
+      "changed": false
+    },
+    {
+      "facade_id": "p0.r0.e1",
+      "start": [
+        324028.637,
+        6411883.477
+      ],
+      "end": [
+        324041.97,
+        6411895.61
+      ],
+      "source_edges": [
+        "p0.r0.e2"
+      ],
+      "changed": false
+    },
+    {
+      "facade_id": "p0.r0.e2",
+      "start": [
+        324041.97,
+        6411895.61
+      ],
+      "end": [
+        324035.296,
+        6411902.943
+      ],
+      "source_edges": [
+        "p0.r0.e3"
+      ],
+      "changed": false
+    },
+    {
+      "facade_id": "p0.r0.e3",
+      "start": [
+        324035.296,
+        6411902.943
+      ],
+      "end": [
+        324021.964,
+        6411890.809
+      ],
+      "source_edges": [
+        "p0.r0.e0"
+      ],
+      "changed": false
+    }
+  ],
+  "original_source_geometry": {
+    "type": "MultiPolygon",
+    "coordinates": [
+      [
+        [
+          [
+            324035.296,
+            6411902.943
+          ],
+          [
+            324021.964,
+            6411890.809
+          ],
+          [
+            324028.637,
+            6411883.477
+          ],
+          [
+            324041.97,
+            6411895.61
+          ],
+          [
+            324035.296,
+            6411902.943
+          ]
+        ]
+      ]
+    ]
+  },
+  "original_source_wkb_hex": "01060000000100000001030000000100000005000000BE9F1A2F0DC71341AC1C5ABC9F755841E5D022DBD7C61341F0A7C6B39C7558415EBA498CF2C61341022B87DE9A75584114AE47E127C71341713D0AE79D755841BE9F1A2F0DC71341AC1C5ABC9F755841",
+  "transformation_definition": "proj=noop ellps=GRS80"
+}

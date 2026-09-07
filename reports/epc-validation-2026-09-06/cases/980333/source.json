@@ -1,0 +1,201 @@
+{
+  "values": {
+    "FormularId": "980333",
+    "EgenTypkod": "320",
+    "EgenTypkod_typ": "320 - Hyreshusenhet, bostäder",
+    "EgenByggnadsKat": "Flerbostadshus",
+    "EgenKomplexitet": "Enkel",
+    "EgenByggnadsTyp": "Friliggande",
+    "EgenNybyggAr": "1971",
+    "EgenAtemp": "3171",
+    "EgenAntalKallarplan": "0",
+    "EgenAvarmgarage": "0",
+    "EgenAntalPlan": "3",
+    "EgenAntalTrapphus": "7",
+    "EgenAntalBolgh": "42",
+    "EgenProjVentFlode": "",
+    "EgenInstEleffektStorre": "Nej",
+    "EgenSmaLagenheter": "Nej",
+    "EgenAtempBostad": "100",
+    "EgenAtempHotell": "",
+    "EgenAtempRestaurang": "",
+    "EgenAtempKontor": "",
+    "EgenAtempLivsmedel": "",
+    "EgenAtempButik": "",
+    "EgenAtempKopcentrum": "",
+    "EgenAtempVard": "",
+    "EgenAtempVardDag": "",
+    "EgenAtempSkolor": "",
+    "EgenAtempBad": "",
+    "EgenAtempTeater": "",
+    "EgenAtempOvrigaVad": "",
+    "EgenAtempOvrig": "",
+    "EgenAtempSumma": "100",
+    "EgiForstaArManad": "1801",
+    "EgiSistaArManad": "1812",
+    "EgiBeraknatVarde": "Nej",
+    "EgiFjarrkyla": "",
+    "EgiSolvarme": "",
+    "EgiGruppSolvarme": "Nej",
+    "EgiBerEngProduktion": "",
+    "EgiSolcell": "",
+    "EgiGruppSolcell": "Nej",
+    "EgiBerElProduktion": "",
+    "EgiFastighet": "34726",
+    "EgiHushall": "",
+    "EgiVerksamhet": "",
+    "EgiKomfort": "",
+    "EgiSumma2": "392630",
+    "EgiStationEI": "Göteborg",
+    "EgiEnergiPrestanda": "151",
+    "EgiSpecifikEnergianvandning": "133",
+    "EgiRefvarde1": "85",
+    "EgiRefvarde2Max": "159",
+    "EgiVersion": "2019",
+    "EgiEnergiklass": "E",
+    "VentTypFTX": "Nej",
+    "VentTypF": "Ja",
+    "VentTypFT": "Nej",
+    "VentTypSjalvdrag": "Nej",
+    "VentTypFmed": "Nej",
+    "EgenSkyddadEllerVardefull": "0",
+    "EgiFjarrvarmeUPPV": "278629",
+    "EgiFjarrvarmeVV": "79275",
+    "EgiOljaUPPV": "",
+    "EgiOljaVV": "",
+    "EgiGasUPPV": "",
+    "EgiGasVV": "",
+    "EgiVedUPPV": "",
+    "EgiVedVV": "",
+    "EgiFlisUPPV": "",
+    "EgiFlisVV": "",
+    "EgiOvrBiobransleUPPV": "",
+    "EgiOvrBiobransleVV": "",
+    "EgiElVattenUPPV": "",
+    "EgiElDirektUPPV": "",
+    "EgiElLuftUPPV": "",
+    "EgiPumpMarkUPPV": "",
+    "EgiPumpFranluftUPPV": "",
+    "EgiPumpLuftLuftUPPV": "",
+    "EgiPumpLuftVattenUPPV": "",
+    "EgiElVV": "",
+    "EgiEnergianvandning": "423299",
+    "EgiPrimarenergianvandning": "478501",
+    "EgiPrimarenergital2019": "151",
+    "EgiPrimarenergital2020": "",
+    "EgiRefvarde3": "",
+    "ExpertGodkannande": "2019-12-23 09:19:24"
+  },
+  "source_rows": [
+    {
+      "file": "/Users/ssanjay/GitHub/epc_join/data/epc/efter_v260/data/std_uttag_efter_260_2019.txt",
+      "row": 4125,
+      "encoding": "utf-16"
+    },
+    {
+      "file": "/Users/ssanjay/GitHub/epc_join/data/epc/efter_v260/data/std_uttag_efter_260_2019.txt",
+      "row": 4129,
+      "encoding": "utf-16"
+    },
+    {
+      "file": "/Users/ssanjay/GitHub/epc_join/data/epc/efter_v260/data/std_uttag_efter_260_2019.txt",
+      "row": 4133,
+      "encoding": "utf-16"
+    },
+    {
+      "file": "/Users/ssanjay/GitHub/epc_join/data/epc/efter_v260/data/std_uttag_efter_260_2019.txt",
+      "row": 4137,
+      "encoding": "utf-16"
+    },
+    {
+      "file": "/Users/ssanjay/GitHub/epc_join/data/epc/efter_v260/data/std_uttag_efter_260_2019.txt",
+      "row": 4141,
+      "encoding": "utf-16"
+    },
+    {
+      "file": "/Users/ssanjay/GitHub/epc_join/data/epc/efter_v260/data/std_uttag_efter_260_2019.txt",
+      "row": 4145,
+      "encoding": "utf-16"
+    },
+    {
+      "file": "/Users/ssanjay/GitHub/epc_join/data/epc/efter_v260/data/std_uttag_efter_260_2019.txt",
+      "row": 4149,
+      "encoding": "utf-16"
+    },
+    {
+      "file": "/Users/ssanjay/GitHub/epc_join/data/epc/efter_v260/data/std_uttag_efter_260_2019.txt",
+      "row": 4153,
+      "encoding": "utf-16"
+    },
+    {
+      "file": "/Users/ssanjay/GitHub/epc_join/data/epc/efter_v260/data/std_uttag_efter_260_2019.txt",
+      "row": 4157,
+      "encoding": "utf-16"
+    },
+    {
+      "file": "/Users/ssanjay/GitHub/epc_join/data/epc/efter_v260/data/std_uttag_efter_260_2019.txt",
+      "row": 4161,
+      "encoding": "utf-16"
+    },
+    {
+      "file": "/Users/ssanjay/GitHub/epc_join/data/epc/efter_v260/data/std_uttag_efter_260_2019.txt",
+      "row": 4165,
+      "encoding": "utf-16"
+    },
+    {
+      "file": "/Users/ssanjay/GitHub/epc_join/data/epc/efter_v260/data/std_uttag_efter_260_2019.txt",
+      "row": 4169,
+      "encoding": "utf-16"
+    },
+    {
+      "file": "/Users/ssanjay/GitHub/epc_join/data/epc/efter_v260/data/std_uttag_efter_260_2019.txt",
+      "row": 4173,
+      "encoding": "utf-16"
+    },
+    {
+      "file": "/Users/ssanjay/GitHub/epc_join/data/epc/efter_v260/data/std_uttag_efter_260_2019.txt",
+      "row": 4177,
+      "encoding": "utf-16"
+    }
+  ],
+  "global_links": [
+    {
+      "building_id": "6c0eb687-7ba8-4358-88e3-48c027cf4c4f",
+      "property_key": "1480|GÅRDSTEN 3:13",
+      "property_municipality_code": "1480",
+      "property_normalized": "GÅRDSTEN 3:13",
+      "representative_point_within": true,
+      "intersection_area_m2": 1296.6321068252867,
+      "property_part_count": 1,
+      "building_area_m2": 1298.0610130039006,
+      "overlap_fraction": 0.9988991995258318,
+      "positive_overlap": true,
+      "candidate_property_count": 2,
+      "primary_overlap_fraction": 0.9988991995258318,
+      "second_overlap_fraction": 0.0011008004836608072,
+      "overlap_margin": 0.997798399042171,
+      "is_primary_property": true,
+      "schema_version": "1.0.0",
+      "epc_subject_id": "5d2fd0ce50473d12b731779c",
+      "formular_id": 980333,
+      "epc_municipality_code": "1480",
+      "epc_property_normalized": "GÅRDSTEN 3:13",
+      "epc_house_number": 18,
+      "epc_building_category": "FLERBOSTADSHUS",
+      "subject_count_for_certificate": 1,
+      "is_max_formularid_for_subject": true,
+      "building_house_number": 18,
+      "building_type": "Bostad",
+      "building_municipality_code": "1480",
+      "house_number_match": true,
+      "decision": "accepted",
+      "evidence_tier": "A_exact_primary",
+      "rejection_reason": null,
+      "semantic_compatibility": "compatible",
+      "kommunkod": "1480",
+      "subject_to_footprint_count": 1,
+      "certificate_to_footprint_count": 1,
+      "building_to_certificate_count": 1
+    }
+  ]
+}

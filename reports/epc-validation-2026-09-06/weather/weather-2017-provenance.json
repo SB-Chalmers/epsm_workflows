@@ -1,0 +1,108 @@
+{
+  "measurement_start": "2017-01-01",
+  "measurement_end": "2017-12-31",
+  "calendar": {
+    "calendar_year": 2017,
+    "hour_count": 8760,
+    "time_basis": "local_standard_time",
+    "leap_header": [
+      "HOLIDAYS/DAYLIGHT SAVINGS",
+      "No",
+      "0",
+      "0",
+      "0"
+    ],
+    "data_periods": [
+      "DATA PERIODS",
+      "1",
+      "1",
+      "Data",
+      "Sunday",
+      "1/1",
+      "12/31"
+    ]
+  },
+  "config": {
+    "year": 2017,
+    "output_path": "/private/tmp/epsm-epc-validation/weather/2017/weather-2017.epw",
+    "station_id": null,
+    "city": "Unknown",
+    "region": "SE",
+    "country": "SWE",
+    "utc_offset": 1,
+    "cache_dir": "/private/tmp/epsm-epc-validation/weather/2017/raw-cache",
+    "max_workers": 8,
+    "latitude": 57.7089,
+    "longitude": 11.9746,
+    "refresh": false,
+    "cache_ttl": null,
+    "radiation_station_id": null,
+    "radiation_station_auto": true,
+    "radiation_station_max_distance_km": 50.0
+  },
+  "result": {
+    "output_path": "/private/tmp/epsm-epc-validation/weather/2017/weather-2017.epw",
+    "rows": 8760,
+    "station": {
+      "station_id": 71420,
+      "name": "G\u00f6teborg A",
+      "latitude": 57.715642,
+      "longitude": 11.992377,
+      "elevation": 3.038,
+      "wmo_id": "999999"
+    },
+    "interpolated_fraction": 0.000978026993545022,
+    "coordinate_distance_km": 1.294971060342637,
+    "report": {
+      "interpolated_fraction": {
+        "dry_bulb": 0.0011410314924691922,
+        "relative_humidity": 0.001597444089456869,
+        "pressure": 0.0012551346417161114,
+        "wind_speed": 0.0013692377909630307,
+        "wind_direction": 0.0013692377909630307,
+        "ghi": 0.00011410314924691921,
+        "ghi_measured": 0.0
+      },
+      "total_interpolated_fraction": 0.000978026993545022,
+      "clamped_dni_hours": 0,
+      "energy_balance_max_residual": 5.684341886080802e-14,
+      "missing_columns": [
+        "cloud_cover"
+      ],
+      "cloud_available": false,
+      "solar_source": "measured+erbs",
+      "linear_filled_hours": {
+        "dry_bulb": 1,
+        "relative_humidity": 2,
+        "pressure": 1,
+        "wind_speed": 0,
+        "wind_direction": 0,
+        "ghi": 0,
+        "ghi_measured": 0
+      },
+      "diurnal_filled_hours": {
+        "dry_bulb": 9,
+        "relative_humidity": 12,
+        "pressure": 10,
+        "wind_speed": 12,
+        "wind_direction": 12,
+        "ghi": 1,
+        "ghi_measured": 0
+      },
+      "max_gap_hours": {
+        "dry_bulb": 5,
+        "relative_humidity": 12,
+        "pressure": 10,
+        "wind_speed": 12,
+        "wind_direction": 12,
+        "ghi": 1,
+        "ghi_measured": 0
+      }
+    },
+    "radiation_station_id": 71415,
+    "radiation_station_distance_km": 2.35392116713665
+  },
+  "weather_sha256": "14618320ec854bfa3e7447f96afb0373eaddbc70e53fefbe96265fcdd09e0b78",
+  "compiler_source_sha256": "e6a7728428a0a0101f3bbacfb3440aa9160968e9edbbcd7e36b2ab8ee8b2dd8e",
+  "comparison_note": "Actual-year weather does not reproduce EPC normal-year or normal-use corrections"
+}

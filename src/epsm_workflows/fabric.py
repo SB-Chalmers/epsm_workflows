@@ -16,7 +16,7 @@ def materials():
     }
 
 
-def fabric(wall_m=0.1, roof_m=0.2, floor_m=0.08, roof="cold_attic", uplift=0.25):
+def fabric(wall_m=0.1, roof_m=0.2, floor_m=0.08, *, uplift=0.25):
     m = materials()
 
     def assembly(parts, films=0.17):
@@ -37,13 +37,12 @@ def fabric(wall_m=0.1, roof_m=0.2, floor_m=0.08, roof="cold_attic", uplift=0.25)
         intermediate_floor=slab,
         weather_shell=assembly([("roof_felt", 0.006), ("conc_roof", 0.15)]),
         basement_wall=assembly([("conc_bsmt", 0.2), ("mw_old", 0.085)]),
-        roof_topology=roof,
         thermal_bridge_uplift_fraction=uplift,
     )
 
 
 def fabric_from_u(wall, top, ground, roof, uplift):
-    base = fabric(roof=roof, uplift=uplift)
+    base = fabric(uplift=uplift)
     if roof == "compact":
         base = base.updated(
             top=ConstructionSpec(

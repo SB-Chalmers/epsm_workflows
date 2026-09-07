@@ -20,9 +20,11 @@ from epsm_core import (
     GeometrySpec,
     GlazingSpec,
     ProvenanceSpec,
+    RoofSpec,
     ScheduleSpec,
     SourceRecord,
     UseSpec,
+    ZoningSpec,
 )
 from epsm_core.compiler import COMPILER_VERSION
 from epsm_core.weather import climate_from_epw, file_sha256
@@ -86,13 +88,13 @@ def shape(family, area, aspect, cut_l, cut_w):
         return Footprint.u_shape(length, width, cl, cw)
 
 
-def facade(footprint, wwrs, window_u, shade):
+def facade(geometry, wwrs, window_u, shade):
     # Axis values travel with local edges; orientation is applied only by the compiler.
-    from epsm_core.geometry import cardinal, facade_edges
+    from epsm_core.geometry import cardinal
 
     overrides = tuple(
-        FacadeOverride(facade_id=fid, wwr=wwrs[cardinal(a, b)])
-        for fid, a, b in facade_edges(footprint.polygon, 0)
+        FacadeOverride(facade_id=edge.facade_id, wwr=wwrs[cardinal(edge.start_m, edge.end_m)])
+        for edge in geometry.facades()
     )
     return FacadeSpec(
         default_wwr=sum(wwrs.values()) / 4,
@@ -266,10 +268,12 @@ def _new(city, seed, city_index, bounds):
         )
         for v, fl, family in zip(("a", "b"), (item["f"], item["alt"]), item["families"]):
             fp = shape(family, atemp / fl, item["aspect"], item["cl"], item["cw"])
-            geometry = GeometrySpec(
-                footprints=(fp,),
-                floors=fl,
-                floor_height_m=height,
+            geometry = GeometrySpec.from_footprint(
+                fp,
+                storeys=fl,
+                storey_height_m=height,
+                roof=RoofSpec(topology=roofs[i]),
+                zoning=ZoningSpec(mode="whole_building"),
                 orientation_deg=(orientation + (item["offset"] if v == "b" else 0)) % 360,
             )
             b = BuildingSpec(
@@ -280,15 +284,15 @@ def _new(city, seed, city_index, bounds):
                 airflow=airflow,
                 use=use,
                 facade=facade(
-                    fp, _wwrs(row, bounds), window, scale("solar_shading_factor", row[12])
+                    geometry, _wwrs(row, bounds), window, scale("solar_shading_factor", row[12])
                 ),
                 provenance=ProvenanceSpec(
                     records=(
                         SourceRecord(
                             field_path="*",
                             status="assumed",
-                            source="swedish_mfh_1961_1975_v2",
-                            assumption_profile="campaign_v2",
+                            source="swedish_mfh_1961_1975",
+                            assumption_profile="building_campaign",
                         ),
                     )
                 ),
@@ -311,15 +315,20 @@ def generate(config):
         raw["num_floors"] = int(round(raw["num_floors"]))
         for city in config["cities"]:
             fp = Footprint.rectangle(50, 25)
+            geometry = GeometrySpec.from_footprint(
+                fp,
+                storeys=raw["num_floors"],
+                storey_height_m=2.7,
+                roof=RoofSpec(topology="cold_attic"),
+                zoning=ZoningSpec(mode="whole_building"),
+            )
             b = BuildingSpec(
                 identifier=f"anchor_{si:04}_{city['slug']}",
-                geometry=GeometrySpec(
-                    footprints=(fp,), floors=raw["num_floors"], floor_height_m=2.7
-                ),
+                geometry=geometry,
                 climate=climate_from_epw(city["epw"]),
                 envelope=fabric(raw["wall_mw"], raw["roof_mw"], raw["floor_eps"]),
                 facade=facade(
-                    fp,
+                    geometry,
                     {c: raw["wwr_" + c] for c in ("north", "south", "east", "west")},
                     raw["window_u"],
                     0.5,
@@ -342,7 +351,7 @@ def generate(config):
                             field_path="*",
                             status="assumed",
                             source="seed42_original_lhs",
-                            assumption_profile="corrected_anchor_v2",
+                            assumption_profile="corrected_anchor",
                         ),
                     )
                 ),
@@ -386,7 +395,10 @@ def validate_pairs(cases):
             a.geometry.conditioned_volume_m3, b.geometry.conditioned_volume_m3, rel_tol=1e-9
         ):
             raise ValueError(f"Pair volume differs: {pair}")
-        if rows[0].comparison_type == "massing" and abs(a.geometry.floors - b.geometry.floors) < 2:
+        if (
+            rows[0].comparison_type == "massing"
+            and abs(a.geometry.parts[0].floors - b.geometry.parts[0].floors) < 2
+        ):
             raise ValueError(f"Massing floor count: {pair}")
 
 

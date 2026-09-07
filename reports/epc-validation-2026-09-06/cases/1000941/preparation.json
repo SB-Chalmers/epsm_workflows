@@ -1,0 +1,191 @@
+{
+  "source_geometry": {
+    "type": "MultiPolygon",
+    "coordinates": [
+      [
+        [
+          [
+            323584.758,
+            6410356.37
+          ],
+          [
+            323588.563,
+            6410426.451
+          ],
+          [
+            323575.077,
+            6410427.177
+          ],
+          [
+            323571.269,
+            6410357.108
+          ],
+          [
+            323584.758,
+            6410356.37
+          ]
+        ]
+      ]
+    ]
+  },
+  "cleaned_geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          323571.269,
+          6410357.108
+        ],
+        [
+          323584.758,
+          6410356.37
+        ],
+        [
+          323588.563,
+          6410426.451
+        ],
+        [
+          323575.077,
+          6410427.177
+        ],
+        [
+          323571.269,
+          6410357.108
+        ]
+      ]
+    ]
+  },
+  "source_wkb_hex": "01060000000100000001030000000100000005000000E926310803C013417B14AE171D7458416F12834012C013411B2FDD9C2E7458418716D94EDCBF1341CFF753CB2E7458416ABC7413CDBF1341D578E9461D745841E926310803C013417B14AE171D745841",
+  "source_crs": "EPSG:3006",
+  "target_crs": "EPSG:3006",
+  "transformation": "axis order change (2D) + axis order change (2D)",
+  "policy": {
+    "version": "conservative-metric-1",
+    "precision_m": 0.001,
+    "simplification_m": 0.05,
+    "max_displacement_m": 0.1,
+    "max_area_fraction": 0.005,
+    "max_perimeter_fraction": 0.01,
+    "protected_vertices": [],
+    "edge_properties": []
+  },
+  "status": "accepted",
+  "reasons": [],
+  "stages": [
+    "exact_normalization",
+    "coordinate_precision",
+    "simplification"
+  ],
+  "metrics": {
+    "boundary_displacement_m": 5.820766091346741e-11,
+    "area_change_fraction": 0.0,
+    "perimeter_change_fraction": 0.0,
+    "source_area_m2": 947.9229205031661,
+    "cleaned_area_m2": 947.9229205031661,
+    "source_perimeter_m": 167.37131906094692,
+    "cleaned_perimeter_m": 167.37131906094692,
+    "source_topology": [
+      1,
+      0,
+      0
+    ],
+    "cleaned_topology": [
+      1,
+      0,
+      0
+    ]
+  },
+  "edge_lineage": [
+    {
+      "facade_id": "p0.r0.e0",
+      "start": [
+        323571.269,
+        6410357.108
+      ],
+      "end": [
+        323584.758,
+        6410356.37
+      ],
+      "source_edges": [
+        "p0.r0.e3"
+      ],
+      "changed": false
+    },
+    {
+      "facade_id": "p0.r0.e1",
+      "start": [
+        323584.758,
+        6410356.37
+      ],
+      "end": [
+        323588.563,
+        6410426.451
+      ],
+      "source_edges": [
+        "p0.r0.e0"
+      ],
+      "changed": false
+    },
+    {
+      "facade_id": "p0.r0.e2",
+      "start": [
+        323588.563,
+        6410426.451
+      ],
+      "end": [
+        323575.077,
+        6410427.177
+      ],
+      "source_edges": [
+        "p0.r0.e1"
+      ],
+      "changed": false
+    },
+    {
+      "facade_id": "p0.r0.e3",
+      "start": [
+        323575.077,
+        6410427.177
+      ],
+      "end": [
+        323571.269,
+        6410357.108
+      ],
+      "source_edges": [
+        "p0.r0.e2"
+      ],
+      "changed": false
+    }
+  ],
+  "original_source_geometry": {
+    "type": "MultiPolygon",
+    "coordinates": [
+      [
+        [
+          [
+            323584.758,
+            6410356.37
+          ],
+          [
+            323588.563,
+            6410426.451
+          ],
+          [
+            323575.077,
+            6410427.177
+          ],
+          [
+            323571.269,
+            6410357.108
+          ],
+          [
+            323584.758,
+            6410356.37
+          ]
+        ]
+      ]
+    ]
+  },
+  "original_source_wkb_hex": "01060000000100000001030000000100000005000000E926310803C013417B14AE171D7458416F12834012C013411B2FDD9C2E7458418716D94EDCBF1341CFF753CB2E7458416ABC7413CDBF1341D578E9461D745841E926310803C013417B14AE171D745841",
+  "transformation_definition": "proj=noop ellps=GRS80"
+}

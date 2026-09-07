@@ -1,0 +1,191 @@
+{
+  "attempted": 24,
+  "successful": 24,
+  "actual": {
+    "annual_kwh": {
+      "n": 12,
+      "mean_observed": 529074.4166666666,
+      "mean_predicted": 476879.3188780221,
+      "mae": 69574.78323563225,
+      "rmse": 103999.60457930884,
+      "bias_percent": -9.8653603622511,
+      "cvrmse_percent": 19.656895382418732,
+      "mape_percent": 9.455415479758583,
+      "median_ape_percent": 8.400364694420208,
+      "within_20_percent_count": 10,
+      "r2": 0.9270825057205131,
+      "fitted_parameters": 0,
+      "error_sign": "predicted_minus_reported",
+      "sampling_unit": "annual_building_record"
+    },
+    "annual_kwh_per_m2_atemp": {
+      "n": 12,
+      "mean_observed": 127.3630272890784,
+      "mean_predicted": 120.52701337627794,
+      "mae": 12.510963811634445,
+      "rmse": 17.129208385585677,
+      "bias_percent": -5.3673456561963135,
+      "cvrmse_percent": 13.44912157804413,
+      "mape_percent": 9.455415479758583,
+      "median_ape_percent": 8.400364694420205,
+      "within_20_percent_count": 10,
+      "r2": -0.21977255824552988,
+      "fitted_parameters": 0,
+      "error_sign": "predicted_minus_reported",
+      "sampling_unit": "annual_building_record"
+    }
+  },
+  "tmy": {
+    "annual_kwh": {
+      "n": 12,
+      "mean_observed": 529074.4166666666,
+      "mean_predicted": 549978.2823997409,
+      "mae": 59732.0153733085,
+      "rmse": 73629.29951613721,
+      "bias_percent": 3.9510256165427786,
+      "cvrmse_percent": 13.916624428757054,
+      "mape_percent": 15.228735235812387,
+      "median_ape_percent": 18.09123793210073,
+      "within_20_percent_count": 9,
+      "r2": 0.9634514882146972,
+      "fitted_parameters": 0,
+      "error_sign": "predicted_minus_reported",
+      "sampling_unit": "annual_building_record"
+    },
+    "annual_kwh_per_m2_atemp": {
+      "n": 12,
+      "mean_observed": 127.3630272890784,
+      "mean_predicted": 139.66727594564037,
+      "mae": 18.871404780283132,
+      "rmse": 20.872160873813566,
+      "bias_percent": 9.660769627149929,
+      "cvrmse_percent": 16.38792773544838,
+      "mape_percent": 15.228735235812392,
+      "median_ape_percent": 18.091237932100736,
+      "within_20_percent_count": 9,
+      "r2": -0.8110861105300262,
+      "fitted_parameters": 0,
+      "error_sign": "predicted_minus_reported",
+      "sampling_unit": "annual_building_record"
+    }
+  },
+  "by_schema": {
+    "fore_v260": {
+      "annual_kwh": {
+        "n": 6,
+        "mean_observed": 381132.1666666667,
+        "mean_predicted": 306485.27116603055,
+        "mae": 75465.38672877905,
+        "rmse": 120220.86244310642,
+        "bias_percent": -19.585566905435545,
+        "cvrmse_percent": 31.543090024267105,
+        "mape_percent": 10.456382359413453,
+        "median_ape_percent": 5.659770775721082,
+        "within_20_percent_count": 4,
+        "r2": 0.880325378125197,
+        "fitted_parameters": 0,
+        "error_sign": "predicted_minus_reported",
+        "sampling_unit": "annual_building_record"
+      },
+      "annual_kwh_per_m2_atemp": {
+        "n": 6,
+        "mean_observed": 140.13855508492932,
+        "mean_predicted": 127.15669006984702,
+        "mae": 15.042121992014168,
+        "rmse": 21.43200654003783,
+        "bias_percent": -9.263592740209718,
+        "cvrmse_percent": 15.29344050040277,
+        "mape_percent": 10.456382359413452,
+        "median_ape_percent": 5.659770775721077,
+        "within_20_percent_count": 4,
+        "r2": -9.601921890106192,
+        "fitted_parameters": 0,
+        "error_sign": "predicted_minus_reported",
+        "sampling_unit": "annual_building_record"
+      }
+    },
+    "efter_v260": {
+      "annual_kwh": {
+        "n": 6,
+        "mean_observed": 677016.6666666666,
+        "mean_predicted": 647273.3665900136,
+        "mae": 63684.17974248545,
+        "rmse": 84727.67988527053,
+        "bias_percent": -4.39328919671889,
+        "cvrmse_percent": 12.514858799921793,
+        "mape_percent": 8.454448600103715,
+        "median_ape_percent": 8.557660343480181,
+        "within_20_percent_count": 6,
+        "r2": 0.9456640388367376,
+        "fitted_parameters": 0,
+        "error_sign": "predicted_minus_reported",
+        "sampling_unit": "annual_building_record"
+      },
+      "annual_kwh_per_m2_atemp": {
+        "n": 6,
+        "mean_observed": 114.58749949322748,
+        "mean_predicted": 113.89733668270884,
+        "mae": 9.97980563125472,
+        "rmse": 11.291087436620666,
+        "bias_percent": -0.6023020081343424,
+        "cvrmse_percent": 9.853681672570234,
+        "mape_percent": 8.454448600103715,
+        "median_ape_percent": 8.557660343480178,
+        "within_20_percent_count": 6,
+        "r2": -0.1450817197997809,
+        "fitted_parameters": 0,
+        "error_sign": "predicted_minus_reported",
+        "sampling_unit": "annual_building_record"
+      }
+    }
+  },
+  "high_confidence_eligible": 0,
+  "primary_energy_accuracy": null,
+  "raw_meter_accuracy": null,
+  "loss_sensitivity": {
+    "0": {
+      "n": 12,
+      "mean_observed": 127.3630272890784,
+      "mean_predicted": 115.52701337627794,
+      "mae": 13.354585940560648,
+      "rmse": 19.666466867356306,
+      "bias_percent": -9.293131739037609,
+      "cvrmse_percent": 15.441268385305362,
+      "mape_percent": 9.80396186445168,
+      "median_ape_percent": 3.999232097685895,
+      "within_20_percent_count": 10,
+      "r2": -0.607892326354859,
+      "fitted_parameters": 0,
+      "error_sign": "predicted_minus_reported",
+      "sampling_unit": "annual_building_record"
+    },
+    "10": {
+      "n": 12,
+      "mean_observed": 127.3630272890784,
+      "mean_predicted": 125.52701337627794,
+      "mae": 13.344297144967777,
+      "rmse": 15.81295800249953,
+      "bias_percent": -1.4415595733550186,
+      "cvrmse_percent": 12.415658090953306,
+      "mape_percent": 10.371834469112693,
+      "median_ape_percent": 8.883624342146051,
+      "within_20_percent_count": 11,
+      "r2": -0.03951439559995418,
+      "fitted_parameters": 0,
+      "error_sign": "predicted_minus_reported",
+      "sampling_unit": "annual_building_record"
+    }
+  },
+  "limitations": [
+    "exploratory selected cohort",
+    "all outlines are roof-edge proxies",
+    "old EPC totals allocated",
+    "new individual metering not established",
+    "normal-use adjustments not reconstructed",
+    "assumed fabric, height, roof, basement and net delivery losses",
+    "no neighboring shading",
+    "no independent national holdout",
+    "related estates can correlate errors",
+    "weather comparison also changes station/location and period; not a pure weather-year effect"
+  ]
+}

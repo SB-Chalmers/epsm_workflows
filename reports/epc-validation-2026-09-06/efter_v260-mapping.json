@@ -1,0 +1,2032 @@
+[
+  {
+    "name": "Viktig information",
+    "values": [
+      [
+        "Beräkning av energiprestanda har förändrats i olika versioner och ligger som grund för att ta fram Energiklassen. ",
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        "EgiEnergiprestanda har beräknats mha nedan datumintervall",
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      [
+        "EgiSpecifikEnergianvandning",
+        "f.d. energisprestanda (2010 till 2018-12-31)",
+        "BBR 24 - BFS 2016:13",
+        null,
+        null,
+        null
+      ],
+      [
+        "EgiPrimarenergital2019 ",
+        "Primarenergital (2019-01-01 till 2020-08-31)",
+        "BBR 25 - BFS 20217:5",
+        null,
+        null,
+        null
+      ],
+      [
+        "EgiPrimarenergtial2020",
+        "Primarenergital (2020-09-01 och framåt)",
+        "BBR 29 - BFS 2020:4",
+        null,
+        null,
+        null
+      ]
+    ]
+  },
+  {
+    "name": "Mappning efter v2.6",
+    "values": [
+      [
+        "Sektion (i formuläret)",
+        "Tabell",
+        "Fältnamn",
+        "Datatyp",
+        "Längd",
+        "NULL tillåtet",
+        "Beskrivning"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "FormularId",
+        "int",
+        0,
+        "Ja",
+        "Deklarationens id"
+      ],
+      [
+        "Byggnaden - Identifikation",
+        null,
+        null,
+        "400",
+        "400",
+        "400",
+        null
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "IdLankod",
+        "nvarchar",
+        2,
+        "Ja",
+        "Länskod"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "IdLan",
+        "nvarchar",
+        100,
+        "Ja",
+        "Län"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "IdKommunkod",
+        "nvarchar",
+        2,
+        "Ja",
+        "Kommunkod"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "IdKommun",
+        "nvarchar",
+        100,
+        "Ja",
+        "Kommun"
+      ],
+      [
+        null,
+        "FASTIGHET",
+        "IdEgnaHem",
+        "nvarchar",
+        50,
+        "Ja",
+        "Egna hem"
+      ],
+      [
+        null,
+        "FASTIGHET",
+        "IdFastBet",
+        "nvarchar",
+        4000,
+        "Ja",
+        "Fastighetsbeteckning"
+      ],
+      [
+        null,
+        "BYGGNAD",
+        "IdHusnr",
+        "int",
+        0,
+        "Ja",
+        "Husnr"
+      ],
+      [
+        null,
+        "BYGGNAD",
+        "IdRapportLM",
+        "varchar",
+        60,
+        "Ja",
+        "Orsak vid felrapport"
+      ],
+      [
+        null,
+        "BYGGNADADRESS",
+        "IdAdr",
+        "nvarchar",
+        4000,
+        "Ja",
+        "Byggnadens adress"
+      ],
+      [
+        null,
+        "BYGGNADADRESS",
+        "IdPostnr",
+        "nvarchar",
+        4000,
+        "Ja",
+        "Byggnades postnr"
+      ],
+      [
+        null,
+        "BYGGNADADRESS",
+        "IdPostort",
+        "nvarchar",
+        4000,
+        "Ja",
+        "Byggnadens postort"
+      ],
+      [
+        null,
+        "BYGGNADADRESS",
+        "IdHuvudadress",
+        "nvarchar",
+        3,
+        "Ja",
+        "Huvudadress"
+      ],
+      [
+        "Byggnaden - Egenskaper",
+        null,
+        null,
+        "400",
+        "400",
+        "400",
+        null
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenTypkod",
+        "nvarchar",
+        10,
+        "Ja",
+        "Typkod-kod"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenTypkod_typ",
+        "nvarchar",
+        128,
+        "Ja",
+        "Typkod_typ"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenByggnadsKat",
+        "nvarchar",
+        30,
+        "Ja",
+        "Typkod_kat"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenKomplexitet",
+        "nvarchar",
+        10,
+        "Ja",
+        "Byggnadens komplexitet"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenByggnadsTyp",
+        "nvarchar",
+        15,
+        "Ja",
+        "Byggnadskategori"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenNybyggAr",
+        "nvarchar",
+        10,
+        "Ja",
+        "Nybyggnadsår"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtemp",
+        "float",
+        15,
+        "Ja",
+        "Byggnadstyp"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAvarmgarage",
+        "float",
+        15,
+        "Ja",
+        "Avarmgarage"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAntalKallarplan",
+        "nvarchar",
+        50,
+        "Ja",
+        "Antal Källarplan uppvärmda till >10 grader"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAntalPlan",
+        "int",
+        0,
+        "Ja",
+        "Antal våningsplan ovan mark"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAntalTrapphus",
+        "int",
+        0,
+        "Ja",
+        "Antal trapphus"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAntalBolgh",
+        "int",
+        0,
+        "Ja",
+        "Antal bostadslägenheter"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenSmaLagenheter",
+        "nvarchar",
+        3,
+        "Ja",
+        "Finns till övervägande del lägenheter med boarea om högst 35 m² vardera?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenProjVentFlode",
+        "float",
+        15,
+        "Ja",
+        "Projekterat genomsnittligt hygieniskt uteluftsflöde i lokalbyggnader eller flerbostadshus"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenInstEleffektStorre",
+        "nvarchar",
+        3,
+        "Ja",
+        "Finns installerad eleffekt >10 W/m² för uppvärmning och varmvattenproduktion"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenSkyddadEllerVardefull",
+        "nvarchar",
+        100,
+        "Ja",
+        "Är byggnaden skyddad som byggnadsminne eller en sådan särskilt värdefull byggnad som avses i 8 kap 13 § PBL?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempBostad",
+        "int",
+        0,
+        "Ja",
+        "Bostäder (inkl. biarea, t.ex. trapphus och uppvärmd källare)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempHotell",
+        "int",
+        0,
+        "Ja",
+        "Hotell, pensionat och elevhem, %"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempRestaurang",
+        "int",
+        0,
+        "Ja",
+        "Restaurang, %"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempKontor",
+        "int",
+        0,
+        "Ja",
+        "Kontor och förvaltning, %"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempLivsmedel",
+        "int",
+        0,
+        "Ja",
+        "Butiks- och lagerlokal för livsmedel, %"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempButik",
+        "int",
+        0,
+        "Ja",
+        "Butiks- och lagerlokal för övrig handel, %"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempKopcentrum",
+        "int",
+        0,
+        "Ja",
+        "Köpcentrum, %"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempVard",
+        "int",
+        0,
+        "Ja",
+        "Vård, dygnet runt, %"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempVardDag",
+        "int",
+        0,
+        "Ja",
+        "Vård dagtid (samt serviceboende, frisersalong o. dyl), %"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempSkolor",
+        "int",
+        0,
+        "Ja",
+        "Skolor (förskola-universitet), %"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempBad",
+        "int",
+        0,
+        "Ja",
+        "Bad-, sport-, idrottsanläggningar (ej utomhusarenor), %"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempTeater",
+        "int",
+        0,
+        "Ja",
+        "Teater-, konsert-, biograflokaler och övriga samlingslokaler, %"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempOvrigaVad",
+        "nvarchar",
+        50,
+        "Ja",
+        "Övrig verksamhet - ange vad"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempOvrig",
+        "int",
+        0,
+        "Ja",
+        "Övrig verksamhet, %"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgenAtempSumma",
+        "int",
+        0,
+        "Ja",
+        "Summa verksamhet"
+      ],
+      [
+        "Energianvändning",
+        null,
+        null,
+        "400",
+        "400",
+        "400",
+        null
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiForstaArManad",
+        "nvarchar",
+        10,
+        "Ja",
+        "Första månaden i 12-månadersperioden uppgifterna avser"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiSistaArManad",
+        "nvarchar",
+        10,
+        "Ja",
+        "Sista månaden i 12-månadersperioden uppgifterna avser"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiBeraknatVarde",
+        "nvarchar",
+        50,
+        "Ja",
+        "Beräknad energianvändning"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiFjarrvarmeUPPV",
+        "int",
+        0,
+        "Ja",
+        "Energi för uppvärmning - Fjärrvärme (1)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiFjarrvarmeVV",
+        "int",
+        0,
+        "Ja",
+        "Energi för tappvarmvatten - Fjärrvärme (1)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiOljaUPPV",
+        "int",
+        0,
+        "Ja",
+        "Energi för uppvärmning - Eldningsolja (2)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiOljaVV",
+        "int",
+        0,
+        "Ja",
+        "Energi för tappvarmvatten - Eldningsolja (2)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiGasUPPV",
+        "int",
+        0,
+        "Ja",
+        "Energi för uppvärmning - Naturgas, stadsgas (3)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiGasVV",
+        "int",
+        0,
+        "Ja",
+        "Energi för tappvarmvatten - Naturgas, stadsgas (3)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiVedUPPV",
+        "int",
+        0,
+        "Ja",
+        "Energi för uppvärmning - Ved (4)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiVedVV",
+        "int",
+        0,
+        "Ja",
+        "Energi för tappvarmvatten - Ved (4)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiFlisUPPV",
+        "int",
+        0,
+        "Ja",
+        "Energi för uppvärmning - Flis/pellets/briketter (5)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiFlisVV",
+        "int",
+        0,
+        "Ja",
+        "Energi för tappvarmvatten - Flis/pellets/briketter (5)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiOvrBiobransleUPPV",
+        "int",
+        0,
+        "Ja",
+        "Energi för uppvärmning - Övrigt biobränsle (6)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiOvrBiobransleVV",
+        "int",
+        0,
+        "Ja",
+        "Energi för tappvarmvatten - Övrigt biobränsle (6)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiElVattenUPPV",
+        "int",
+        0,
+        "Ja",
+        "Energi för uppvärmning - El (vattenburen) (7)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiElDirektUPPV",
+        "int",
+        0,
+        "Ja",
+        "Energi för uppvärmning - El (direktverkande) (8)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiElLuftUPPV",
+        "int",
+        0,
+        "Ja",
+        "Energi för uppvärmning - El (luftburen) (9)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiPumpMarkUPPV",
+        "int",
+        0,
+        "Ja",
+        "Energi för uppvärmning - Markvärmepump (el) (10)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiPumpFranluftUPPV",
+        "int",
+        0,
+        "Ja",
+        "Energi för uppvärmning - Värmepump-frånluft (el) (11)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiPumpLuftLuftUPPV",
+        "int",
+        0,
+        "Ja",
+        "Energi för uppvärmning - Värmepump-luft/luft (el) (12)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiPumpLuftVattenUPPV",
+        "int",
+        0,
+        "Ja",
+        "Energi för uppvärmning - Värmepump-luft/vatten (el) (13)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiElVV",
+        "int",
+        0,
+        "Ja",
+        "Energi för uppvärmning - Tappvarmvatten (el) (14)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiFjarrkyla",
+        "int",
+        0,
+        "Ja",
+        "Fjärrkyla (15)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiKomfort",
+        "int",
+        0,
+        "Ja",
+        "El för komfortkyla (16)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiFastighet",
+        "int",
+        0,
+        "Ja",
+        "Fastighetsel (17)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiHushall",
+        "int",
+        0,
+        "Ja",
+        "Hushållsel (18)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiVerksamhet",
+        "int",
+        0,
+        "Ja",
+        "Verksamhetsel (19)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiSumma2",
+        "int",
+        0,
+        "Ja",
+        "Summa 1-17"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiSolvarme",
+        "int",
+        0,
+        "Ja",
+        "Ange solfångararea"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiGruppSolvarme",
+        "nvarchar",
+        8,
+        "Ja",
+        "Finns solvärme?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiBerEngProduktion",
+        "int",
+        0,
+        "Ja",
+        "Beräknad energiproduktion"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiStationEI",
+        "nvarchar",
+        50,
+        "Ja",
+        "Ort (Energi-Index)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiSolcell",
+        "int",
+        0,
+        "Ja",
+        "Ange solcellsarea"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiGruppSolcell",
+        "nvarchar",
+        8,
+        "Ja",
+        "Finns solcellsystem?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiBerElProduktion",
+        "int",
+        0,
+        "Ja",
+        "Beräknad elproduktion"
+      ],
+      [
+        null,
+        "FORMBERAKNING",
+        "EgiEnergianvandning",
+        "int",
+        0,
+        "Ja",
+        "Byggnadens energianvändning (Normalårskorrigerat värde (Energi-index))"
+      ],
+      [
+        null,
+        "FORMBERAKNING",
+        "EgiPrimarenergianvandning",
+        "int",
+        0,
+        "Ja",
+        "Byggnadens primärenergianvändning"
+      ],
+      [
+        null,
+        "FORMBERAKNING",
+        "EgiPrimarenergital2019",
+        "int",
+        0,
+        "Ja",
+        "Används för att räkna fram Energiprestanda from 2019-01-01-tom 2020-08-31 Finns på bilaga från 2020-09-01"
+      ],
+      [
+        null,
+        "FORMBERAKNING",
+        "EgiPrimarenergital2020",
+        "int",
+        0,
+        "Ja",
+        "Används för att räkna fram Energiprestanda from 2020-09-01 -> Finns på bilaga från 2020-09-01"
+      ],
+      [
+        null,
+        "FORMBERAKNING",
+        "EgiSpecifikEnergianvandning",
+        "int",
+        0,
+        "Ja",
+        "Används för att Energiprestanda tom from 2010 tom 2018-12-31 Finns på bilaga från 2020-09-01"
+      ],
+      [
+        null,
+        "FORMBERAKNING",
+        "EgiRefvarde1",
+        "int",
+        0,
+        "Ja",
+        "Referensvärde 1 (enligt nybyggnadskrav)"
+      ],
+      [
+        null,
+        "FORMBERAKNING",
+        "EgiRefvarde2Max",
+        "int",
+        0,
+        "Ja",
+        "Referensvärde 2 (liknande byggnader)"
+      ],
+      [
+        null,
+        "FORMBERAKNING",
+        "EgiRefvarde3",
+        "int",
+        0,
+        "Ja",
+        "Referensvärde 3 (nybyggnadskrav för denna byggnad)"
+      ],
+      [
+        null,
+        "FORMBERAKNING",
+        "EgiEnergiPrestanda",
+        "int",
+        0,
+        "Ja",
+        "Energiprestanda"
+      ],
+      [
+        null,
+        "FORMBERAKNING",
+        "EgiVersion",
+        "int",
+        0,
+        "Ja",
+        "Energiklass beräknat på referensvärdesår"
+      ],
+      [
+        null,
+        "FORMBERAKNING",
+        "EgiEnergiklass",
+        "nvarchar",
+        1,
+        "Ja",
+        "Energiklass"
+      ],
+      [
+        "Uppgifter om radon",
+        null,
+        null,
+        "400",
+        "400",
+        "400",
+        null
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "RadGruppHaltMatt",
+        "nvarchar",
+        3,
+        "Ja",
+        "Är radonhalten mätt?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "RadHalt",
+        "int",
+        0,
+        "Ja",
+        "Radonhalt"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "RadTypMatning",
+        "nvarchar",
+        50,
+        "Ja",
+        "Typ av mätning"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "RadMatDatum",
+        "nvarchar",
+        15,
+        "Ja",
+        "Datum för radonmätning"
+      ],
+      [
+        "Uppgifter om ventilationskontroll",
+        null,
+        null,
+        "400",
+        "400",
+        "400",
+        null
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "VentGruppKrav",
+        "nvarchar",
+        3,
+        "Ja",
+        "Finns det krav på återkommande ventilationskontroll i byggnaden?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "VentTypFTX",
+        "nvarchar",
+        3,
+        "Ja",
+        "FTX"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "VentTypF",
+        "nvarchar",
+        3,
+        "Ja",
+        "F"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "VentTypFT",
+        "nvarchar",
+        3,
+        "Ja",
+        "FT"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "VentTypSjalvdrag",
+        "nvarchar",
+        3,
+        "Ja",
+        "Självdrag"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "VentTypFmed",
+        "nvarchar",
+        3,
+        "Ja",
+        "F med återvinning"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "VentGruppGodkand",
+        "nvarchar",
+        6,
+        "Ja",
+        "Är ventilationskontrollen utförd vid tidpunkten för energideklarationen?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "VentDelvisProcent",
+        "int",
+        0,
+        "Ja",
+        "% utan anmärkning"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "VentGruppUtanAnm",
+        "int",
+        0,
+        "Ja",
+        "Är ventilationskontrollen utan anmärkning vid tidpunkten för energideklarationen?"
+      ],
+      [
+        "Uppgifter om luftkonditioneringssystem",
+        null,
+        null,
+        "400",
+        "400",
+        "400",
+        null
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "LuftGruppFinnsluft",
+        "nvarchar",
+        3,
+        "Ja",
+        "Finns luftkonditioneringssystem med nominell kyleffekt större än 12 kW"
+      ],
+      [
+        "Inspektion av uppvärmningssystem",
+        null,
+        null,
+        "400",
+        "400",
+        "400",
+        null
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspUppvGruppNomStorre",
+        "nvarchar",
+        3,
+        "Ja",
+        "Finns det ett uppvärmningssystem eller kombinerat rumsuppvärmnings- och ventilationssystem med en nominell effekt på rumsuppvärmning på över 70 kW?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspUppvBedomningNomEffekt",
+        "nvarchar",
+        50,
+        "Ja",
+        "Bedömningsgrund för fastställande av nominell effekt"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspUppvGruppInspSkyldighet",
+        "nvarchar",
+        3,
+        "Ja",
+        "Omfattas byggnaden av inspektionsskyldighet?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspUppvAngeNomEffekt",
+        "int",
+        0,
+        "Ja",
+        "Ange systemets nominella effekt"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspUppvAngeNomEffektYta",
+        "int",
+        0,
+        "Ja",
+        "Ange yta som betjänas"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspUppvGruppLamplig",
+        "nvarchar",
+        3,
+        "Ja",
+        "Är luftkonditioneringssystemets storlek och verkningsgrad lämplig för byggnadens behov?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspUppvLampligKommentar",
+        "nvarchar",
+        2000,
+        "Ja",
+        "Kommentar"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspUppvUndAvtalEgipres",
+        "nvarchar",
+        3,
+        "Ja",
+        "Avtal om energiprestanda (8 a § första stycket 1 EDF)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspUppvUndSysFastStyr",
+        "nvarchar",
+        3,
+        "Ja",
+        "System för fastighetsautomation/fastighetsstyrning (8 a § första stycket 2 EDF)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspUppvUndFunkOverReglBost",
+        "nvarchar",
+        3,
+        "Ja",
+        "Funktion för övervakning och reglering, bostadshus (8 a § första stycket 3 EDF)"
+      ],
+      [
+        "Inspektion av luftkonditioneringssystem",
+        null,
+        null,
+        "400",
+        "400",
+        "400",
+        null
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspLuftGruppNomStorre",
+        "nvarchar",
+        3,
+        "Ja",
+        "Finns det ett luftkonditioneringssystem eller kombinerat luftkonditionerings- och ventilationssystem med en nominell effekt på över 70 kW?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspLuftBedomningNomEffekt",
+        "nvarchar",
+        50,
+        "Ja",
+        "Bedömningsgrund för fastställande av nominell effekt "
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspLuftGruppInspSkyldighet",
+        "nvarchar",
+        3,
+        "Ja",
+        "Omfattas byggnaden av inspektionsskyldighet?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspLuftAngeNomEffekt",
+        "int",
+        0,
+        "Ja",
+        "Ange systemets nominella effekt"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspLuftAngeNomEffektYta",
+        "int",
+        0,
+        "Ja",
+        "Ange yta som betjänas"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspLuftGruppLamplig",
+        "nvarchar",
+        3,
+        "Ja",
+        "Är luftkonditioneringssystemets storlek och verkningsgrad lämplig för byggnadens behov?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspLuftLampligKommentar",
+        "nvarchar",
+        2000,
+        "Ja",
+        "Kommentar"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspLuftUndAvtalEgipres",
+        "nvarchar",
+        3,
+        "Ja",
+        "Avtal om energiprestanda (8 a § första stycket 1 EDF)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspLuftUndSysFastStyr",
+        "nvarchar",
+        3,
+        "Ja",
+        "System för fastighetsautomation/fastighetsstyrning (8 a § första stycket 2 EDF)"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "InspLuftUndFunkOverReglBost",
+        "nvarchar",
+        3,
+        "Ja",
+        "Funktion för övervakning och reglering, bostadshus (8 a § första stycket 3 EDF)"
+      ],
+      [
+        "Utförda energieffektiviseringsåtgärder sedan föregående energideklaration",
+        null,
+        null,
+        "400",
+        "400",
+        "400",
+        null
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaNyVentil",
+        "varchar",
+        3,
+        "Ja",
+        "Nya radiatorventiler"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaJustVarme",
+        "varchar",
+        3,
+        "Ja",
+        "Injustering av värmesystem"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaStyrVarme",
+        "varchar",
+        3,
+        "Ja",
+        "Tids-/behovsstyrning av värmesystem"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaRengVarme",
+        "varchar",
+        3,
+        "Ja",
+        "Rengöring och/eller luftning av värmesystem"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaBegrTemp",
+        "varchar",
+        3,
+        "Ja",
+        "Maxbegränsning av innertemperatur"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaNyGivare",
+        "varchar",
+        3,
+        "Ja",
+        "Ny inomhusgivare"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaBytePumpar",
+        "varchar",
+        3,
+        "Ja",
+        "Byte/installation av tryckstyrda pumpar"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaAnnanVarme",
+        "varchar",
+        3,
+        "Ja",
+        "Annan åtgärd (värme)"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaJustVent",
+        "varchar",
+        3,
+        "Ja",
+        "Injustering av ventilationssystem"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaTidstyrVent",
+        "varchar",
+        3,
+        "Ja",
+        "Tidsstyrning av ventilationssystem"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaBehovstyrVent",
+        "varchar",
+        3,
+        "Ja",
+        "Behovsstyrning av ventilationssystem"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaByteFlaktar",
+        "varchar",
+        3,
+        "Ja",
+        "Byte/installation av varvtalsstyrda fläktar"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaAnnanVent",
+        "varchar",
+        3,
+        "Ja",
+        "Annan åtgärd (ventilation)"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaStyrBelys",
+        "varchar",
+        3,
+        "Ja",
+        "Tids-/behovsstyrning av belysning"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaStyrKyla",
+        "varchar",
+        3,
+        "Ja",
+        "Tids-/behovsstyrning av kyla"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaAnnanBelysKyla",
+        "varchar",
+        3,
+        "Ja",
+        "Annan åtgärd (belysning, kyla m.m.)"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaInstSolceller",
+        "nvarchar",
+        3,
+        "Ja",
+        "Installation av solceller"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaInstSolvarme",
+        "nvarchar",
+        3,
+        "Ja",
+        "Installation av solvärme"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaIsolTak",
+        "varchar",
+        3,
+        "Ja",
+        "Tilläggsisolering vindsbjälklag/tak"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaIsolVagg",
+        "varchar",
+        3,
+        "Ja",
+        "Tilläggsisolering väggar"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaIsolMark",
+        "varchar",
+        3,
+        "Ja",
+        "Tilläggsisolering källare/mark"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaByteFonster",
+        "varchar",
+        3,
+        "Ja",
+        "Byte till energieffektiva fönster/fönsterdörrar med innerruta"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaKompFonster",
+        "varchar",
+        3,
+        "Ja",
+        "Komplettering fönster/fönsterdörrar med innerruta"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaTatFonster",
+        "varchar",
+        3,
+        "Ja",
+        "Tätning fönster/fönsterdörrar/ytterdörrar"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaAnnanBygg",
+        "varchar",
+        3,
+        "Ja",
+        "Annan åtgärd (bygg)"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaSparaVatten",
+        "varchar",
+        3,
+        "Ja",
+        "Varmvattenbesparande åtgärder"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaEffektivBelys",
+        "varchar",
+        3,
+        "Ja",
+        "Energieffektiv belysning"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaIsolKanal",
+        "varchar",
+        3,
+        "Ja",
+        "Isolering av rör och ventilationskanaler"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaByteVarmepump",
+        "varchar",
+        3,
+        "Ja",
+        "Byte/installation av värmepump"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaByteAnnanVarme",
+        "varchar",
+        3,
+        "Ja",
+        "Byte/installation av energieffektivare värmekälla"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaByteVent",
+        "varchar",
+        3,
+        "Ja",
+        "Byte/komplettering av ventilationssystem"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaAterVent",
+        "varchar",
+        3,
+        "Ja",
+        "Återvinning av ventilationsvärme"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaAnnanInst",
+        "varchar",
+        3,
+        "Ja",
+        "Annan åtgärd (installation)"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaUtfortAr",
+        "varchar",
+        4,
+        "Ja",
+        "Utfört (år)"
+      ],
+      [
+        null,
+        "ATGUTFORDA",
+        "AtgUtfordaBeskrivning",
+        "400",
+        "används ej",
+        "400",
+        "Beskrivning av åtgärden"
+      ],
+      [
+        "Rekommendationer om kostnadseffektiva åtgärder",
+        null,
+        null,
+        "400",
+        "400",
+        "400",
+        null
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagNyVentil",
+        "varchar",
+        3,
+        "Ja",
+        "Nya radiatorventiler"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagJustVarme",
+        "varchar",
+        3,
+        "Ja",
+        "Injustering av värmesystem"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagStyrVarme",
+        "varchar",
+        3,
+        "Ja",
+        "Tids-/behovsstyrning av värmesystem"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagRengVarme",
+        "varchar",
+        3,
+        "Ja",
+        "Rengöring och/eller luftning av värmesystem"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagBegrTemp",
+        "varchar",
+        3,
+        "Ja",
+        "Maxbegränsning av innertemperatur"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagNyGivare",
+        "varchar",
+        3,
+        "Ja",
+        "Ny inomhusgivare"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagBytePumpar",
+        "varchar",
+        3,
+        "Ja",
+        "Byte/installation av tryckstyrda pumpar"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagAnnanVarme",
+        "varchar",
+        3,
+        "Ja",
+        "Annan åtgärd (värme)"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagJustVent",
+        "varchar",
+        3,
+        "Ja",
+        "Injustering av ventilationssystem"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagTidstyrVent",
+        "varchar",
+        3,
+        "Ja",
+        "Tidsstyrning av ventilationssystem"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagBehovstyrVent",
+        "varchar",
+        3,
+        "Ja",
+        "Behovsstyrning av ventilationssystem"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagByteFlaktar",
+        "varchar",
+        3,
+        "Ja",
+        "Byte/installation av varvtalsstyrda fläktar"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagAnnanVent",
+        "varchar",
+        3,
+        "Ja",
+        "Annan åtgärd (ventilation)"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagStyrBelys",
+        "varchar",
+        3,
+        "Ja",
+        "Tids-/behovsstyrning av belysning"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagStyrKyla",
+        "varchar",
+        3,
+        "Ja",
+        "Tids-/behovsstyrning av kyla"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagAnnanBelysKyla",
+        "varchar",
+        3,
+        "Ja",
+        "Annan åtgärd (belysning, kyla m.m.)"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagSparaVatten",
+        "varchar",
+        3,
+        "Ja",
+        "Varmvattenbesparande åtgärder"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagEffektivBelys",
+        "varchar",
+        3,
+        "Ja",
+        "Energieffektiv belysning"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagIsolKanal",
+        "varchar",
+        3,
+        "Ja",
+        "Isolering av rör och ventilationskanaler"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagByteVarmepump",
+        "varchar",
+        3,
+        "Ja",
+        "Byte/installation av värmepump"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagByteAnnanVarme",
+        "varchar",
+        3,
+        "Ja",
+        "Byte/installation av energieffektivare värmekälla"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagByteVent",
+        "varchar",
+        3,
+        "Ja",
+        "Byte/komplettering av ventilationssystem"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagAterVent",
+        "varchar",
+        3,
+        "Ja",
+        "Återvinning av ventilationsvärme"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagAnnanInst",
+        "varchar",
+        3,
+        "Ja",
+        "Annan åtgärd (installation)"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagIsolTak",
+        "varchar",
+        3,
+        "Ja",
+        "Tilläggsisolering vindsbjälklag/tak"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagIsolVagg",
+        "varchar",
+        3,
+        "Ja",
+        "Tilläggsisolering väggar"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagIsolMark",
+        "varchar",
+        3,
+        "Ja",
+        "Tilläggsisolering källare/mark"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagInstSolceller",
+        "nvarchar",
+        3,
+        "Ja",
+        "Installation av solceller"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagInstSolvarme",
+        "nvarchar",
+        3,
+        "Ja",
+        "Installation av solvärme"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagByteFonster",
+        "varchar",
+        3,
+        "Ja",
+        "Byte till energieffektiva fönster/fönsterdörrar med innerruta"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagKompFonster",
+        "varchar",
+        3,
+        "Ja",
+        "Komplettering fönster/fönsterdörrar med innerruta"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagTatFonster",
+        "varchar",
+        3,
+        "Ja",
+        "Tätning fönster/fönsterdörrar/ytterdörrar"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagAnnanBygg",
+        "varchar",
+        3,
+        "Ja",
+        "Annan åtgärd (bygg)"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagEgiMinskad",
+        "int",
+        0,
+        "Ja",
+        "Minskad energianvändning"
+      ],
+      [
+        null,
+        "ATGFÖRSLAG",
+        "AtgForslagKostnad",
+        "float",
+        15,
+        "Ja",
+        "Kostnad per sparad kWh"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "ExpertGruppHosUppdragsgivare",
+        "nvarchar",
+        3,
+        "Ja",
+        "Är du anställd hos den som är skyldig att se till att det finns en energideklaration eller ett inspektionsprotokoll?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "Godkand",
+        "nvarchar",
+        10,
+        "Ja",
+        "Godkand"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "Version",
+        "nvarchar",
+        50,
+        "Ja",
+        "Version"
+      ],
+      [
+        "Övrigt",
+        null,
+        null,
+        "400",
+        "400",
+        "400",
+        null
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "OvrBesiktigat",
+        "nvarchar",
+        3,
+        "Ja",
+        "Har byggnaden besiktigats på plats?"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "OvrBesiktigatUndantag",
+        "nvarchar",
+        100,
+        "Ja",
+        "Vid nej, vilket undantag åberopas"
+      ],
+      [
+        "Expert",
+        null,
+        null,
+        "400",
+        "400",
+        "400",
+        null
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "ExpertGodkannande",
+        "nvarchar",
+        25,
+        "Ja",
+        "Datum för godkännande"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "ExpertBehorighet",
+        "nvarchar",
+        15,
+        "Ja",
+        "ExpertBehorighet"
+      ],
+      [
+        "Byggnadens energiprestanda",
+        null,
+        null,
+        "400",
+        "400",
+        "400",
+        null
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiSpecifikEnergianvandning",
+        "int",
+        0,
+        "Ja",
+        "Specifik energianvändning enligt BBR 24 och tidigare"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiPrimarenergital2019",
+        "int",
+        0,
+        "Ja",
+        "Primärenergital enligt BBR 25"
+      ],
+      [
+        null,
+        "DEKLARATION",
+        "EgiPrimarenergital2020",
+        "int",
+        0,
+        "Ja",
+        "Primärenergital enligt BBR 29"
+      ],
+      [
+        null,
+        null,
+        null,
+        "400",
+        "400",
+        "400",
+        null
+      ]
+    ]
+  }
+]

@@ -1,0 +1,36 @@
+{
+  "formular_id": "866342",
+  "source_schema": "fore_v260",
+  "measurement_start": "2017-01-01",
+  "measurement_end": "2017-12-31",
+  "certificate_date": "2018-09-10",
+  "reporting_regime": "specific_energy_pre_2019",
+  "atemp_m2": 3204.0,
+  "reported_district_heat_kwh": 424300.0,
+  "reported_dhw_subset_kwh": 80100.0,
+  "measurement_kind": "Fördelat",
+  "target_fields": [
+    "EgiFjarrvarme"
+  ],
+  "unit": "kWh",
+  "energy_boundary": "reported_delivered_district_heat_heat_and_dhw",
+  "normal_use_status": "may_be_adjusted_before_entry",
+  "normal_year_status": "before_automatic_energiindex_correction",
+  "undeclared_alternative_carriers": [
+    "EgiOlja",
+    "EgiGas",
+    "EgiVed",
+    "EgiFlis",
+    "EgiOvrBiobransle",
+    "EgiElVatten",
+    "EgiElDirekt",
+    "EgiElLuft",
+    "EgiPumpMark",
+    "EgiPumpFranluft",
+    "EgiPumpLuftLuft",
+    "EgiPumpLuftVatten"
+  ],
+  "reported_performance_kwh_m2": 153.0,
+  "reported_primary_2019_kwh_m2": null,
+  "reported_primary_2020_kwh_m2": null
+}
