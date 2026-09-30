@@ -3,4 +3,7 @@ __pycache__/
 *.egg-info/
 results/
 .pytest_cache/
-
+.env
+.env.*
+!.env.example
+output/

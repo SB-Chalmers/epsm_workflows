@@ -12,22 +12,41 @@ from pyproj import CRS, Transformer
 from shapely import STRtree, from_wkb, from_wkt
 from shapely.ops import transform
 
-from epsm_core import BuildingBuilder, BuildingPart, Footprint, GeometryPolicy, prepare_geometry
+from epsm_core import (
+    BuildingBuilder,
+    BuildingPart,
+    Footprint,
+    GeometryPolicy,
+    prepare_geometry,
+)
+
+from .validation import reporting_regime as _reporting_regime
 
 
-def prepare_footprints(geometry, *, source_crs, target_crs="EPSG:3006", policy=GeometryPolicy()):
+def reporting_regime(certificate_date):
+    """Backward-compatible re-export of the lightweight validation helper."""
+    return _reporting_regime(certificate_date)
+
+
+def prepare_footprints(
+    geometry, *, source_crs, target_crs="EPSG:3006", policy=GeometryPolicy()
+):
     if isinstance(geometry, (bytes, bytearray, memoryview)):
         geometry = from_wkb(bytes(geometry))
     elif isinstance(geometry, str):
         geometry = from_wkt(geometry)
     crs = CRS.from_user_input(target_crs)
-    if not crs.is_projected or any(a.unit_conversion_factor != 1 for a in crs.axis_info):
+    if not crs.is_projected or any(
+        a.unit_conversion_factor != 1 for a in crs.axis_info
+    ):
         raise ValueError("Geometry preparation requires a projected metre CRS")
     tx = Transformer.from_crs(source_crs, target_crs, always_xy=True)
     projected = transform(tx.transform, geometry)
     prepared = prepare_geometry(projected, policy)
     artifact = prepared.artifact(
-        source_crs=str(source_crs), target_crs=str(target_crs), transformation=tx.description
+        source_crs=str(source_crs),
+        target_crs=str(target_crs),
+        transformation=tx.description,
     )
     from shapely.geometry import mapping
 
@@ -38,7 +57,9 @@ def prepare_footprints(geometry, *, source_crs, target_crs="EPSG:3006", policy=G
 
 
 def footprints(geometry, *, source_crs, target_crs="EPSG:3006"):
-    result, _ = prepare_footprints(geometry, source_crs=source_crs, target_crs=target_crs)
+    result, _ = prepare_footprints(
+        geometry, source_crs=source_crs, target_crs=target_crs
+    )
     if result.status != "accepted":
         raise ValueError(f"Footprint preparation {result.status}: {result.reasons}")
     g = result.cleaned_geometry
@@ -103,11 +124,15 @@ def load_records(publication_root, *, municipality, limit=100):
         )
     ids_by_municipality = defaultdict(set)
     for row in relations:
-        ids_by_municipality[str(row["building_municipality_code"]).zfill(4)].add(row["building_id"])
+        ids_by_municipality[str(row["building_municipality_code"]).zfill(4)].add(
+            row["building_id"]
+        )
     buildings = {}
     for code, ids in ids_by_municipality.items():
         path = root / f"building_results/kommunkod={code}/part.parquet"
-        table = pq.read_table(path, partitioning=None, filters=[("building_id", "in", sorted(ids))])
+        table = pq.read_table(
+            path, partitioning=None, filters=[("building_id", "in", sorted(ids))]
+        )
         for row in table.to_pylist():
             row["source_partition"] = str(path)
             buildings[row["building_id"]] = row
@@ -169,7 +194,9 @@ def raw_certificate_rows(paths, certificate_ids, *, encoding, source_schema):
 
 def building_from_record(record, *, source_crs, assumption_profile, assumptions):
     if record["certificate_to_footprint_count"] != 1 or len(record["buildings"]) != 1:
-        raise ValueError("One BuildingSpec requires a reviewed single-building certificate")
+        raise ValueError(
+            "One BuildingSpec requires a reviewed single-building certificate"
+        )
     source = record["buildings"][0]
     result, artifact = prepare_footprints(source["geometry"], source_crs=source_crs)
     if result.status != "accepted":
@@ -189,7 +216,12 @@ def building_from_record(record, *, source_crs, assumption_profile, assumptions)
         raise ValueError("Unknown outline collection position requires review")
     parts = [
         BuildingPart.model_validate(
-            {**a, "footprint": fp.model_dump(), "outline_kind": outline, "outline_reviewed": False}
+            {
+                **a,
+                "footprint": fp.model_dump(),
+                "outline_kind": outline,
+                "outline_reviewed": False,
+            }
         )
         for a, fp in zip(part_assumptions, fps)
     ]
@@ -213,7 +245,9 @@ def nearby(records, target, *, source_crs, radius_m=500):
     from shapely.geometry import MultiPolygon
 
     geometries = [
-        MultiPolygon([p.polygon for p in footprints(r["geometry"], source_crs=source_crs)])
+        MultiPolygon(
+            [p.polygon for p in footprints(r["geometry"], source_crs=source_crs)]
+        )
         for r in records
     ]
     origin = MultiPolygon(
@@ -225,19 +259,6 @@ def nearby(records, target, *, source_crs, radius_m=500):
         for i in tree.query(origin, predicate="dwithin", distance=radius_m)
         if records[i]["building_id"] != target["building_id"]
     ]
-
-
-def reporting_regime(certificate_date):
-    value = (
-        date.fromisoformat(certificate_date)
-        if isinstance(certificate_date, str)
-        else certificate_date
-    )
-    if value < date(2019, 1, 1):
-        return "specific_energy_pre_2019"
-    if value < date(2020, 9, 1):
-        return "primary_energy_2019_weights"
-    return "primary_energy_2020_weights"
 
 
 def study_eligibility(record, review, *, mapping_verified=False):
@@ -286,13 +307,17 @@ def study_eligibility(record, review, *, mapping_verified=False):
 def study_report(records, reviews=(), *, mapping_verified=False):
     lookup = {r["formular_id"]: r for r in reviews}
     cases = [
-        study_eligibility(r, lookup.get(r["formular_id"], {}), mapping_verified=mapping_verified)
+        study_eligibility(
+            r, lookup.get(r["formular_id"], {}), mapping_verified=mapping_verified
+        )
         for r in records
     ]
     quotas = {
         schema: dict(
             required=6,
-            eligible=sum(c["eligible"] and c["source_schemas"] == [schema] for c in cases),
+            eligible=sum(
+                c["eligible"] and c["source_schemas"] == [schema] for c in cases
+            ),
         )
         for schema in ("fore_v260", "efter_v260")
     }

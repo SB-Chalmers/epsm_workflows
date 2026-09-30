@@ -28,11 +28,21 @@ def fabric(wall_m=0.1, roof_m=0.2, floor_m=0.08, *, uplift=0.25):
     slab = assembly([("conc_floor", 0.2)])
     return EnvelopeSpec(
         wall=assembly(
-            [("concrete", 0.08), ("mw_old", wall_m), ("concrete", 0.15), ("gypsum", 0.013)]
+            [
+                ("concrete", 0.08),
+                ("mw_old", wall_m),
+                ("concrete", 0.15),
+                ("gypsum", 0.013),
+            ]
         ),
         top=assembly([("mw_old", roof_m), ("conc_floor", 0.15)], 0.14),
         ground=assembly(
-            [("conc_floor", 0.16), ("eps", floor_m), ("dry_sand", 0.05), ("conc_floor", 0.05)]
+            [
+                ("conc_floor", 0.16),
+                ("eps", floor_m),
+                ("dry_sand", 0.05),
+                ("conc_floor", 0.05),
+            ]
         ),
         intermediate_floor=slab,
         weather_shell=assembly([("roof_felt", 0.006), ("conc_roof", 0.15)]),

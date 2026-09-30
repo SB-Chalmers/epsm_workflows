@@ -1,0 +1,83 @@
+{
+  "schema_version": 2,
+  "campaign_name": "epsm_surrogate_60000",
+  "notification_email": "sanjay.somanath@chalmers.se",
+  "core_commit": "3878a30b63fc997a0d65cd0325675acef35851b3",
+  "seed": 42,
+  "expected_runs": 60000,
+  "expected_groups": 9200,
+  "expected_pilot_runs": 420,
+  "execution": {
+    "checkpoint_runs": 8,
+    "checkpoint_seconds": 300,
+    "production_min_batch_size": 32,
+    "startup_jitter_seconds": 30,
+    "excluded_nodes": ["vera-r01-20"]
+  },
+  "counts": {"diversity_designs": 9000, "anchor_designs": 200},
+  "core_repository": "../epsm_core",
+  "smhi2epw_repository": "../smhi2epw",
+  "templates": "output/vera-weather-v2/templates.json",
+  "bounds": {
+    "footprint_area_m2": [250, 2500],
+    "floor_height_m": [2.6, 3.1],
+    "aspect_ratio": [1, 4],
+    "orientation_deg": [0, 360],
+    "wall_u": [0.17, 1.5],
+    "roof_u": [0.1, 0.85],
+    "ground_u": [0.2, 1.7],
+    "window_u": [1.1, 3],
+    "shgc": [0.4, 0.75],
+    "wwr_north": [0.06, 0.29],
+    "wwr_south": [0.08, 0.33],
+    "wwr_east": [0.07, 0.32],
+    "wwr_west": [0.08, 0.34],
+    "infiltration_ach": [0.1, 1],
+    "natural_ach": [0.2, 0.7],
+    "mechanical_l_s_m2": [0.25, 0.5],
+    "recovery": [0, 0.8],
+    "heating_setpoint_c": [19.5, 22.5],
+    "occupants_per_m2": [0.012, 0.022],
+    "equipment_w_m2": [1.2, 2.2],
+    "lighting_w_m2": [0, 1.5],
+    "dhw_kwh_m2_year": [18, 30],
+    "bridge_uplift": [0, 0.35],
+    "wall_concrete_m": [0.1, 0.25],
+    "roof_concrete_m": [0.12, 0.25],
+    "floor_concrete_m": [0.12, 0.25],
+    "cut_l_unit": [0, 1],
+    "cut_w_unit": [0, 1]
+  },
+  "cities": [
+    {
+      "slug": "malmo", "city": "Malmö", "amy_station_id": 53300,
+      "tmy": "output/vera-weather-v2/weather/malmo/tmy.epw",
+      "amy": "output/vera-weather-v2/weather/malmo/amy-2018.epw",
+      "amy_provenance": "output/vera-weather-v2/weather/malmo/amy-provenance.json"
+    },
+    {
+      "slug": "gothenburg", "city": "Gothenburg", "amy_station_id": 72420,
+      "tmy": "output/vera-weather-v2/weather/gothenburg/tmy.epw",
+      "amy": "output/vera-weather-v2/weather/gothenburg/amy-2018.epw",
+      "amy_provenance": "output/vera-weather-v2/weather/gothenburg/amy-provenance.json"
+    },
+    {
+      "slug": "uddevalla", "city": "Uddevalla", "amy_station_id": 82260,
+      "tmy": "output/vera-weather-v2/weather/uddevalla/tmy.epw",
+      "amy": "output/vera-weather-v2/weather/uddevalla/amy-2018.epw",
+      "amy_provenance": "output/vera-weather-v2/weather/uddevalla/amy-provenance.json"
+    },
+    {
+      "slug": "umea", "city": "Umeå", "amy_station_id": 139260,
+      "tmy": "output/vera-weather-v2/weather/umea/tmy.epw",
+      "amy": "output/vera-weather-v2/weather/umea/amy-2018.epw",
+      "amy_provenance": "output/vera-weather-v2/weather/umea/amy-provenance.json"
+    },
+    {
+      "slug": "ritsem", "city": "Ritsem", "amy_station_id": 177930,
+      "tmy": "output/vera-weather-v2/weather/ritsem/tmy.epw",
+      "amy": "output/vera-weather-v2/weather/ritsem/amy-2018.epw",
+      "amy_provenance": "output/vera-weather-v2/weather/ritsem/amy-provenance.json"
+    }
+  ]
+}

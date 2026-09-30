@@ -10,7 +10,19 @@ import re
 from datetime import date
 from statistics import median
 
-from .epc import reporting_regime
+
+def reporting_regime(certificate_date):
+    """Return the Swedish EPC reporting regime active on the approval date."""
+    value = (
+        date.fromisoformat(certificate_date)
+        if isinstance(certificate_date, str)
+        else certificate_date
+    )
+    if value < date(2019, 1, 1):
+        return "specific_energy_pre_2019"
+    if value < date(2020, 9, 1):
+        return "primary_energy_2019_weights"
+    return "primary_energy_2020_weights"
 
 
 def number(values, field, *, required=True):
@@ -54,8 +66,12 @@ def district_heat_observation(values, *, schema):
     if schema not in {"fore_v260", "efter_v260"}:
         raise ValueError("Unknown EPC export schema")
     if values.get("EgiBeraknatVarde") != "Nej":
-        raise ValueError("Calculated or unknown energy is not a measurement-based target")
-    start, end = measurement_period(values["EgiForstaArManad"], values["EgiSistaArManad"])
+        raise ValueError(
+            "Calculated or unknown energy is not a measurement-based target"
+        )
+    start, end = measurement_period(
+        values["EgiForstaArManad"], values["EgiSistaArManad"]
+    )
     atemp = number(values, "EgenAtemp")
     if atemp <= 0:
         raise ValueError("Atemp must be positive")
@@ -74,7 +90,9 @@ def district_heat_observation(values, *, schema):
         "PumpLuftVatten",
     ]
     suffixes = [""] if schema == "fore_v260" else ["UPPV", "VV"]
-    declared_fields = ["Egi" + fuel + suffix for fuel in alternatives for suffix in suffixes]
+    declared_fields = [
+        "Egi" + fuel + suffix for fuel in alternatives for suffix in suffixes
+    ]
     if schema == "efter_v260":
         declared_fields += ["EgiElVV"]
     if any((number(values, key, required=False) or 0) > 0 for key in declared_fields):
@@ -119,9 +137,15 @@ def district_heat_observation(values, *, schema):
         undeclared_alternative_carriers=[
             k for k in declared_fields if number(values, k, required=False) is None
         ],
-        reported_performance_kwh_m2=number(values, "EgiEnergiPrestanda", required=False),
-        reported_primary_2019_kwh_m2=number(values, "EgiPrimarenergital2019", required=False),
-        reported_primary_2020_kwh_m2=number(values, "EgiPrimarenergital2020", required=False),
+        reported_performance_kwh_m2=number(
+            values, "EgiEnergiPrestanda", required=False
+        ),
+        reported_primary_2019_kwh_m2=number(
+            values, "EgiPrimarenergital2019", required=False
+        ),
+        reported_primary_2020_kwh_m2=number(
+            values, "EgiPrimarenergital2020", required=False
+        ),
     )
 
 

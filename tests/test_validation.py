@@ -27,7 +27,9 @@ def test_export_schemas_have_different_dhw_accounting():
     old = district_heat_observation(row(), schema="fore_v260")
     newer = row() | dict(EgiFjarrvarmeUPPV="75000", EgiFjarrvarmeVV="25000")
     new = district_heat_observation(newer, schema="efter_v260")
-    assert old["reported_district_heat_kwh"] == new["reported_district_heat_kwh"] == 100000
+    assert (
+        old["reported_district_heat_kwh"] == new["reported_district_heat_kwh"] == 100000
+    )
     assert old["atemp_m2"] == 1000.5
     assert old["measurement_kind"] == "Fördelat"
     assert new["reporting_regime"] == "specific_energy_pre_2019"
@@ -52,7 +54,9 @@ def test_incomparable_targets_fail(patch):
 
 def test_missing_new_dhw_is_not_zero():
     with pytest.raises(ValueError, match="Missing EgiFjarrvarmeVV"):
-        district_heat_observation(row() | {"EgiFjarrvarmeUPPV": "100000"}, schema="efter_v260")
+        district_heat_observation(
+            row() | {"EgiFjarrvarmeUPPV": "100000"}, schema="efter_v260"
+        )
 
 
 def test_period_preserves_leap_and_cross_year_dates():

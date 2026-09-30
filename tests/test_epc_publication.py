@@ -15,7 +15,9 @@ def test_reporting_is_not_export_schema():
 def test_raw_join_preserves_rows(tmp_path):
     p = tmp_path / "source.txt"
     p.write_text("FormularId|Energy\n7|001.20\n7|unknown\n8|9\n")
-    rows = list(raw_certificate_rows([p], [7], encoding="utf-8", source_schema="fore_v260"))
+    rows = list(
+        raw_certificate_rows([p], [7], encoding="utf-8", source_schema="fore_v260")
+    )
     assert len(rows) == 2
     assert rows[0]["original_values"]["Energy"] == "001.20"
     assert rows[0]["units"] is None
