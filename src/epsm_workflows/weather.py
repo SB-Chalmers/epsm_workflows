@@ -31,6 +31,9 @@ def compile_measurement_weather(
     station_id=None,
     radiation_station_id=None,
     compiler=None,
+    metobs_gap_fallback=True,
+    gap_fallback_max_distance_km=75.0,
+    gap_fallback_max_stations=3,
 ):
     year = measurement_year(start, end)
     import smhi2epw.compiler as compiler_module
@@ -50,6 +53,9 @@ def compile_measurement_weather(
         station_id=station_id,
         radiation_station_id=radiation_station_id,
         utc_offset=1,
+        metobs_gap_fallback=metobs_gap_fallback,
+        gap_fallback_max_distance_km=gap_fallback_max_distance_km,
+        gap_fallback_max_stations=gap_fallback_max_stations,
         cache_dir=str(directory / "raw-cache"),
     )
     result = (compiler or compile_epw)(config)
