@@ -94,6 +94,9 @@ def test_runtime_rejects_interpreter_or_dependency_mismatch(pinned_runtime, depe
 @pytest.fixture
 def simulation_dependencies(monkeypatch):
     """Stub lazy Core-facing imports while retaining the real archive checks."""
+    monkeypatch.setattr(
+        R.shutil, "disk_usage", lambda _: SimpleNamespace(free=10 * 1024**3)
+    )
     package = importlib.import_module(R.__package__)
     modules = {}
     for name, functions in {
@@ -109,6 +112,26 @@ def simulation_dependencies(monkeypatch):
         monkeypatch.setattr(package, name, module, raising=False)
         modules[name] = module
     return modules
+
+
+def test_low_disk_space_stops_before_archive_or_core(
+    tmp_path, simulation_dependencies, monkeypatch
+):
+    """Storage rejection is independent of the machine running unit fixtures."""
+    monkeypatch.setattr(R.shutil, "disk_usage", lambda _: SimpleNamespace(free=0))
+    with pytest.raises(RuntimeError, match="less than 2 GiB free"):
+        R.simulate_case(
+            tmp_path / "weather.epw",
+            tmp_path,
+            SimpleNamespace(year=2023, utc_offset=1),
+            "house",
+            18,
+            Path("unavailable-energyplus"),
+        )
+    for module in simulation_dependencies.values():
+        for value in vars(module).values():
+            if isinstance(value, Mock):
+                value.assert_not_called()
 
 
 @pytest.mark.parametrize(

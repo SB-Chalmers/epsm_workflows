@@ -113,7 +113,7 @@ elevation; see the study note before interpreting small annual differences.
 ## Expanded Swedish campaign
 
 The [campaign design and reproduction note](../../docs/weather-imputation-campaign.md)
-describes the forthcoming **v4: planned, not yet run or complete**, across six
+describes the corrected **v5: interrupted at the disk guard, incomplete**, across six
 geographical strata × three years × six buildings. The completed v3 stage-one
 pilot is retained separately: Gothenburg 2023, all six profiles, four-season
 meteorological outages of 48/168 hours and seed 11. It has 60 paired rows,
@@ -125,7 +125,7 @@ each mode. At 168 hours the priorities tie. The pilot masks cover zero annual
 load-peak and absolute heatwave/cold-spell hours, making unchanged peaks/spells
 uninformative about preservation during those events.
 
-The wider matrix remains planned coverage, separate from both that pilot and
+The wider matrix is in progress, separate from both that pilot and
 the original completed Gothenburg study. Station
 metadata fixes each reference's actual exposure and coordinates; 2018, 2021 and
 2023 are deliberately contrasting years, not a random climate sample. Stations
@@ -134,8 +134,8 @@ solely to climate. The six synthetic EPSM Core
 profiles include detached and multifamily homes, an office and a school, without
 measured-building calibration.
 
-V4 panels use 3/12/48/168-hour outages, seasonal seeds 11/29/47 and separate
-warmest/coldest original annual-temperature anchors. Optional detected absolute
+V5 retains v4's panels: 3/12/48/168-hour outages, seasonal seeds 11/29/47 and
+separate warmest/coldest original annual-temperature anchors. Optional detected absolute
 `heatwave_hottest_hour`/`cold_spell_coldest_hour` anchors are added independently
 of annual extrema and omitted when the corresponding event is absent. Anchors
 are weather-based and shared across all buildings, not selected from building
@@ -147,23 +147,66 @@ and unsupported temporal cases remain explicit; native fills are shared frozen
 background and reconstruction contexts exclude all hidden truth.
 
 ```sh
-../epsm_core/.venv/bin/python -m examples.weather_imputation_sensitivity.run_campaign \
-  --phase plan --output output/weather-imputation-campaign-2026-10-05-v4
+TZ=UTC0 ../epsm_core/.venv/bin/python -m examples.weather_imputation_sensitivity.run_campaign \
+  --phase plan --output output/weather-imputation-campaign-2026-10-05-v5
 
-../epsm_core/.venv/bin/python -m examples.weather_imputation_sensitivity.run_campaign \
-  --phase run --select-sites gothenburg --select-years 2023 \
-  --output output/weather-imputation-campaign-2026-10-05-v4 \
-  --select-buildings detached_old_light,office_glazed \
-  --select-durations 3,48,168 --select-seeds 11 \
-  --select-scopes meteorology --sampling random_seasonal --workers 1
+TZ=UTC0 ../epsm_core/.venv/bin/python -m examples.weather_imputation_sensitivity.run_campaign \
+  --phase run --select-sites malmo --workers 3 \
+  --output output/weather-imputation-campaign-2026-10-05-v5
+
+TZ=UTC0 ../epsm_core/.venv/bin/python -m examples.weather_imputation_sensitivity.run_campaign \
+  --phase run --select-sites gothenburg --workers 3 \
+  --output output/weather-imputation-campaign-2026-10-05-v5
 ```
 
-These commands describe the forthcoming v4 driver once finalized.
-`--phase sources` pins inputs separately. Selective runs accumulate within the
-same output matrix; expand coverage progressively. The intended final directory
-is `output/weather-imputation-campaign-2026-10-05-v4`, with saved runtime/packages,
+The full native session stopped at the 2 GiB free-disk guard. Lossless archival
+and cache deduplication recovered roughly 3 GB of task-owned storage. Available
+space continues to fluctuate; the study has no active simulation process.
+Completed runs and pinned sources remain intact.
+Execution needs adequate storage before resumption; freeing at least 10 GiB or
+providing another output drive is the next operational step.
+
+These commands illustrate explicit one-stratum batches after storage is available,
+retaining every planned year/profile/scope/seed/duration for that stratum. Repeat
+for `stockholm`, `ostersund`, `lulea` and `kiruna` as capacity allows. This avoids
+queuing preparation across all qualified site/years when storage is constrained;
+it does not alter the full study scope or frozen matrix. `--phase sources` pins
+inputs separately. The corrected directory
+is `output/weather-imputation-campaign-2026-10-05-v5`, with saved runtime/packages,
 source and panel receipts, validated weather, Core models, compressed SQL,
-hourly loads, comparison CSVs and coverage reporting.
+hourly loads, comparison CSVs and coverage reporting. The study harness is frozen
+at EPSM commit `6ce7f10`, following `93d5959`. Smhi2epw remains at `5930c07`, which
+includes the `3bb5a87` recovery hierarchy and `5930c07` cloud-source/unit
+corrections; Core and EnergyPlus are unchanged. **245 tests passed: 182
+frozen-harness, one additional disk-guard test, eight separate analysis, 30
+archival and 24 final-report tests**; Ruff was clean for the owned code/test
+files. Exact hashes and
+execution progress belong to the saved runtime and `full-campaign.log`.
+
+The interrupted **PROVISIONAL** snapshot contains 1,792 raw building rows,
+including 18 consumed reference rows across the three Malmö regional years;
+1,558 deduplicated non-reference comparisons; 354 paired hierarchy responses;
+and 336 forced-method common-cohort responses. No site/year has completed the
+full case matrix. Verified tables and four PNG/SVG figures are saved in
+`output/weather-imputation-campaign-2026-10-05-v5/provisional-analysis`, separately
+from the eventual final analysis. They do not establish the campaign's overall
+method ranking or completed geographical coverage.
+
+V4 remains partial diagnostic evidence. Its forced ERA5/Erbs solar path omitted
+the optional all-NaN measured-radiation column on STRÅNG-only originals, causing
+solar cleanup to fail. Production already prepares that column. The research
+harness now does the same, with regression checks for absent/all-NaN equivalence,
+unchanged unmasked fields and no invented measurement. That driver change
+requires fresh v5 evidence, with no smhi2epw production change. Accepted v4
+simulations may be reused only after identical regenerated EPW bytes, model
+hashes and SQL metrics are verified under the new Core specification/run
+identity; migration provenance retains the unchanged original receipts.
+
+Native execution with `TZ=UTC0` mitigates a separately diagnosed macOS
+timezone-service stall in the EnergyPlus process; the initial `TZ=UTC` still
+allowed intermittent startup waits. The EPW/SQL weather clock remains fixed UTC+1
+local standard time. Recovery evidence and quarantined incomplete attempts are
+retained; these are not accepted comparisons.
 
 The campaign reports empirical demand/peak error tails and event preservation,
 without treating repeated masks or buildings as independent climates. Optional
@@ -174,14 +217,48 @@ snow physics. The frozen source plan qualifies 17/18 references under unchanged
 gap limits; Kiruna 2018 remains unsupported within the screened 100 km area.
 The campaign note gives year-specific primary/donor/GHI station identities and
 city distances, partial-donor limitations and five STRÅNG-based solar proxies.
-V4 has upper bounds of 56 panels and 210 non-reference weather comparisons per
+V5 has upper bounds of 56 panels and 210 non-reference weather comparisons per
 site/year, or 22,788 paired building rows including 108 references across the
 requested matrix. Event absence, source/method qualification and simulation
-reuse change actual counts. Additional lossless storage improvements are under
-development; no final implementation is claimed here yet.
+reuse change actual counts. The launch inventory from 17 qualified references
+contains **904 panels: 882 ready and 22 unsupported**, with 62 available weather
+anchors. Its 191 repeated scope/duration/mask combinations retain separate panel
+labels but do not provide independent weather evidence. Ready panels do not
+establish completed reconstructions or accepted building runs.
+A helper outside the frozen runtime deduplicates identical physical masks for
+analysis, retaining anchor-label mappings and checking duplicated responses
+before giving each physical outage one weight per building/method/sampling
+stratum. Labelled-case summaries remain
+available; the helper does not change scientific results or receipts.
+
+V5 retains v4's tested lossless SQL/hourly storage. Reference SQL uses self-contained
+XZ preset 3; candidate SQL uses standard Zstandard 1.5.6 level 12 with
+`--patch-from` the same building/site/year's immutable reference SQL dictionary,
+recoverable from XZ. Compressed/uncompressed/dictionary hashes are verified
+before consumption, and the decoder binary/version is pinned. Hourly CSVs use
+gzip level 6 and separate archive receipts, preserving their logical Core paths;
+identical models use SHA-verified hardlinks. Atomic crash recovery and a 2 GiB
+free-disk guard permit resumption of the immutable matrix. Auxiliary traces are
+removed; the campaign note documents the tested storage scheme.
+A separate utility outside the frozen runtime losslessly archives candidate
+EPWs as gzip level 6 only for audited complete site/years, with checked summary
+and building/case coverage. It verifies hashes, preserves baseline EPWs and
+original receipts, and adds `weather-archive.json`. Restore exact bytes with
+`gzip -dk weather.epw.gz`; retain the archive and sidecar. Incomplete site/years
+are skipped, so storage support does not imply completed campaign coverage.
+After the runner stopped, a separate verified storage operation also archived
+already prepared candidate EPWs with no active simulations. Its interruption
+receipt preserves exact hashes without marking the campaign complete.
+
+Outside the frozen runtime, independent analysis and the plotter produce paired
+tables and four PNG/SVG figures. Partial checkpoints require `--provisional` and
+are labelled. A separate final-report publisher verifies complete coverage,
+audits and analysis/figure/input hashes before writing the synthesis; it refuses
+incomplete evidence. Available tools and provisional output do not establish a
+completed campaign.
 
 The v1/v2 launch diagnostics are excluded from accepted comparisons. V3 remains
 a completed precursor with its frozen runtime and receipts; source qualification
-and pilot performance do not establish completed v4 coverage or universal method
+and pilot performance do not establish completed v5 coverage or universal method
 accuracy. Use each version's saved driver/packages and coverage report for its
 accepted results.
