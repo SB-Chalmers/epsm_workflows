@@ -103,6 +103,8 @@ def plot_inputs(root, manifest):
 
 def finish(fig, title, caption, provisional):
     """Apply readable typography and visibly label any incomplete campaign evidence."""
+    if not provisional:
+        caption += "\nBuilding outcomes use only warning-free runs and warning-free reference baselines."
     fig.suptitle(
         title + (" — PROVISIONAL" if provisional else ""),
         y=0.98,
@@ -214,7 +216,7 @@ def error_figure(pairs, quantity, provisional):
                 ax.set_xticks(range(4), ticks)
                 ax.set_xlim(-0.3, 3.3)
                 ax.set_xlabel(
-                    "Outage hours\npaired responses/location-years", fontsize=9
+                    "Hours per block\npaired responses/location-years", fontsize=9
                 )
                 ax.set_ylabel(
                     f"Absolute {mode} error ({'%' if percent else units})", fontsize=10
@@ -251,9 +253,10 @@ def error_figure(pairs, quantity, provisional):
         if quantity == "annual"
         else "Percentage panels exclude zero/numerical reference peaks ≤10⁻⁶ W/m²; absolute panels retain their errors."
     )
+    caption += "\nSeasonal random: 4 blocks/file (4×hours); weather event: 1 block/file. Method comparisons are within each sampling stratum."
     finish(fig, f"Paired {quantity} sensible-load errors", caption, provisional)
     fig.subplots_adjust(
-        top=0.84, bottom=0.16, left=0.07, right=0.99, hspace=0.5, wspace=0.4
+        top=0.84, bottom=0.21, left=0.07, right=0.99, hspace=0.5, wspace=0.4
     )
     return fig, stats
 
@@ -317,8 +320,8 @@ def profile_figure(pairs, provisional):
                     )
             labels = [
                 BUILDINGS[b]
-                + f"\nN12/48: {counts[b][12][0]}/{counts[b][48][0]}"
-                + f"\nY12/48: {counts[b][12][1]}/{counts[b][48][1]}"
+                + f"\nN {counts[b][12][0]}/{counts[b][48][0]}"
+                + f"\nY {counts[b][12][1]}/{counts[b][48][1]}"
                 for b in present
             ]
             ax.set_xticks(range(len(present)), labels)
@@ -340,7 +343,7 @@ def profile_figure(pairs, provisional):
             )
     fig.legend(
         handles=[
-            Line2D([0], [0], color=c, marker=m, label=f"{h}h outages")
+            Line2D([0], [0], color=c, marker=m, label=f"{h}h blocks")
             for h, c, m in ((12, "#0072B2", "o"), (48, "#009E73", "D"))
         ],
         loc="upper center",
@@ -348,10 +351,11 @@ def profile_figure(pairs, provisional):
         ncol=2,
         frameon=False,
     )
-    caption = "Points: median of site-year means; whiskers: empirical 5th–95th percentiles, with equal site-year weights.\nN12/48: paired responses for 12/48h; Y12/48: eligible site-years. Spreads describe these selected synthetic profiles and climate records; they are not confidence intervals."
+    caption = "Points: median of site-year means; whiskers: empirical 5th–95th percentiles, with equal site-year weights.\nN: paired responses; Y: eligible site-years, both in 12h/48h order. Spreads describe these selected synthetic profiles and climate records; they are not confidence intervals."
+    caption += "\nSeasonal random: 4 blocks/file (4×hours); weather event: 1 block/file. Method comparisons are within each sampling stratum."
     finish(fig, "Paired hierarchy changes by building profile", caption, provisional)
     fig.subplots_adjust(
-        top=0.84, bottom=0.17, left=0.09, right=0.97, hspace=0.65, wspace=0.32
+        top=0.84, bottom=0.18, left=0.09, right=0.97, hspace=0.65, wspace=0.32
     )
     return fig, stats
 
@@ -419,9 +423,12 @@ def peak_timing_figure(pairs, provisional):
                     alpha=0.85,
                 )
             ax.set_xticks(range(4), ticks)
+            ax.set_xlabel("Hours per block", fontsize=9)
             ax.set_xlim(-0.5, 3.5)
             ax.set_ylim(0, 105)
-            ax.set_ylabel(f"Exact {mode} peak-hour set preserved (%)", fontsize=10)
+            ax.set_ylabel(
+                f"{mode.capitalize()} peak-hour set\npreserved exactly (%)", fontsize=10
+            )
             ax.set_title(label, fontsize=11)
     fig.legend(
         handles=[
@@ -434,9 +441,10 @@ def peak_timing_figure(pairs, provisional):
         frameon=False,
     )
     caption = "E: reference-peak responses actually hidden; U: positive reference peaks unexposed; Y: exposed site-years. E=0 means no exposure evidence; with E>0, a zero-height bar means 0% preserved.\nPreservation requires the exact set of all tied maximum-load hours; zero/numerical peaks ≤10⁻⁶ W/m² are excluded. Rates are descriptive scenario fractions, not confidence limits."
+    caption += "\nSeasonal random: 4 blocks/file (4×hours); weather event: 1 block/file. Method comparisons are within each sampling stratum."
     finish(fig, "Peak timing among actually exposed peaks", caption, provisional)
     fig.subplots_adjust(
-        top=0.85, bottom=0.17, left=0.08, right=0.99, hspace=0.5, wspace=0.3
+        top=0.85, bottom=0.24, left=0.08, right=0.99, hspace=0.6, wspace=0.3
     )
     return fig, stats
 

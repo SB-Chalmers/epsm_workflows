@@ -130,6 +130,122 @@ def display(data):
     )
 
 
+def verify_qualification(root, analysis, manifest, comparisons, common, pairs):
+    """Recheck scoped diagnostics and prevent excluded runs leaking into outcomes."""
+    name = "diagnostics-qualification.json"
+    expected = manifest["outputs"].get(name)
+    if expected is None:
+        return None
+    data = (analysis / name).read_bytes()
+    if (
+        sha(data) != expected
+        or manifest.get("diagnostics_qualification_sha256") != expected
+    ):
+        raise ValueError("Diagnostics qualification differs from its analysis receipt")
+    saved = json.loads(data)
+    if saved.get("evidence_mode") != "strict_immutable_files":
+        raise ValueError("Final diagnostics require immutable simulation evidence")
+    from examples import qualify_weather_campaign_results as Q
+
+    captured = []
+    for path in sorted((root / "datasets").glob("*/*/summary.csv")):
+        raw = path.read_bytes()
+        if manifest["inputs"].get(str(path)) != sha(raw):
+            raise ValueError("Raw diagnostic input differs from captured analysis")
+        captured.append(pd.read_csv(io.BytesIO(raw)))
+    raw_rows = pd.concat(captured, ignore_index=True) if captured else pd.DataFrame()
+    annotated, excluded, verified = Q.qualify_results(root, raw_rows)
+    for key in (
+        "policy",
+        "evidence_mode",
+        "qualifier_script_sha256",
+        "raw_building_rows",
+        "qualified_building_rows",
+        "excluded_building_rows",
+        "unique_simulations",
+        "qualified_simulations",
+        "excluded_simulations",
+        "exclusion_reason_counts",
+    ):
+        if saved.get(key) != verified.get(key):
+            raise ValueError(f"Diagnostics qualification mismatch: {key}")
+    if (
+        verified["raw_building_rows"] != manifest["captured_building_rows"]
+        or verified["qualified_building_rows"]
+        != manifest.get("qualified_building_rows")
+        or verified["excluded_building_rows"] != manifest.get("excluded_building_rows")
+    ):
+        raise ValueError("Raw, qualified and excluded diagnostic counts disagree")
+    references = annotated.loc[
+        annotated.method.eq("reference") & annotated.engine_outcome_qualified
+    ]
+    if len(references) != manifest.get("qualified_reference_building_rows") or len(
+        references[["site_id", "year"]].drop_duplicates()
+    ) != manifest.get("qualified_reference_site_years"):
+        raise ValueError("Qualified reference building and site-year counts disagree")
+    for path, expected_sha in verified["inputs"].items():
+        if (
+            saved["inputs"].get(path) != expected_sha
+            or manifest["inputs"].get(path) != expected_sha
+        ):
+            raise ValueError("Diagnostics qualification evidence differs")
+    if saved["inputs"] != verified["inputs"]:
+        raise ValueError("Diagnostics qualification evidence set differs")
+    key = "canonical_simulation_path"
+    if len(saved["records"]) != saved["unique_simulations"] or len(
+        {r[key] for r in saved["records"]}
+    ) != len(saved["records"]):
+        raise ValueError("Duplicate or missing canonical simulation qualifications")
+    if {r[key]: r for r in saved["records"]} != {
+        r[key]: r for r in verified["records"]
+    }:
+        raise ValueError("Canonical simulation qualifications differ")
+    identity = ["site_id", "year", "building_id", "case_id"]
+    expected_exclusions = set(
+        map(tuple, excluded[identity].itertuples(index=False, name=None))
+    )
+    captured_exclusions = table(analysis, manifest, "diagnostic-exclusions.csv")
+    if (
+        len(captured_exclusions) != len(excluded)
+        or set(
+            map(tuple, captured_exclusions[identity].itertuples(index=False, name=None))
+        )
+        != expected_exclusions
+    ):
+        raise ValueError(
+            "Diagnostic exclusion catalogue differs from screened evidence"
+        )
+    eligible = set(
+        map(
+            tuple,
+            annotated.loc[annotated.engine_outcome_qualified, identity].itertuples(
+                index=False, name=None
+            ),
+        )
+    )
+    for outcomes in (comparisons, common):
+        if outcomes.empty:
+            continue
+        if (
+            "engine_outcome_qualified" not in outcomes
+            or not outcomes.engine_outcome_qualified.eq(True).all()
+            or not set(
+                map(tuple, outcomes[identity].itertuples(index=False, name=None))
+            ).issubset(eligible)
+        ):
+            raise ValueError("Unqualified engine outcomes entered building comparisons")
+    for side in ("new", "old"):
+        column = "case_id_" + side
+        if column not in pairs:
+            raise ValueError("Paired outcomes lack their qualified case identities")
+        paired_ids = pairs[identity[:-1] + [column]].rename(columns={column: "case_id"})
+        if not set(map(tuple, paired_ids.itertuples(index=False, name=None))).issubset(
+            eligible
+        ):
+            raise ValueError("Unqualified engine outcomes entered hierarchy pairs")
+    return saved
+
+
 def publish(root):
     """Refuse partial evidence and write a provenance-bound scientific summary."""
     root = Path(root).resolve()
@@ -169,7 +285,7 @@ def publish(root):
         if not audit.get("full_matrix_site_year_complete"):
             raise ValueError("An incomplete site/year audit cannot enter the synthesis")
         if not audit.get("diagnostics_accepted") or any(
-            audit.get(key) != 0 for key in ("warnings", "severe", "fatal")
+            audit.get(key) != 0 for key in ("severe", "fatal")
         ):
             raise ValueError("Accepted campaign diagnostics must be clean")
         audits.append(audit)
@@ -178,6 +294,14 @@ def publish(root):
         raise ValueError("Completed audit count differs from final coverage")
     if sum(a["comparisons"] for a in audits) != coverage["comparison_rows"]:
         raise ValueError("Completed audits and captured comparison counts differ")
+    qualification = verify_qualification(
+        root, analysis, manifest, comparisons, common, pairs
+    )
+    raw_warnings = sum(a["warnings"] for a in audits)
+    if raw_warnings and qualification is None:
+        raise ValueError(
+            "Accepted campaign diagnostics must be clean or strictly screened"
+        )
     plot_path = analysis / "figures/manifest.json"
     plot_bytes = plot_path.read_bytes()
     plots = json.loads(plot_bytes)
@@ -188,6 +312,36 @@ def publish(root):
     for name, expected in plots["outputs"].items():
         if sha((plot_path.parent / name).read_bytes()) != expected:
             raise ValueError(f"Figure differs from its provenance receipt: {name}")
+    event_plot_path = analysis / "event-figures/manifest.json"
+    event_plot_sha = None
+    if event_plot_path.exists():
+        event_plot_bytes = event_plot_path.read_bytes()
+        event_plots = json.loads(event_plot_bytes)
+        if event_plots["status"] != "complete" or event_plots[
+            "analysis_manifest_sha256"
+        ] != sha(manifest_bytes):
+            raise ValueError("Final event figure must use this completed analysis")
+        for name, expected in event_plots["outputs"].items():
+            if sha((event_plot_path.parent / name).read_bytes()) != expected:
+                raise ValueError(
+                    f"Event figure differs from its provenance receipt: {name}"
+                )
+        event_plot_sha = sha(event_plot_bytes)
+    method_plot_path = analysis / "method-figures/manifest.json"
+    method_plot_sha = None
+    if method_plot_path.exists():
+        method_plot_bytes = method_plot_path.read_bytes()
+        method_plots = json.loads(method_plot_bytes)
+        if method_plots["status"] != "complete" or method_plots[
+            "analysis_manifest_sha256"
+        ] != sha(manifest_bytes):
+            raise ValueError("Final method figures must use this completed analysis")
+        for name, expected in method_plots["outputs"].items():
+            if sha((method_plot_path.parent / name).read_bytes()) != expected:
+                raise ValueError(
+                    f"Method figure differs from its provenance receipt: {name}"
+                )
+        method_plot_sha = sha(method_plot_bytes)
     meteorology_pairs = pairs.loc[pairs.scope.eq("meteorology")].copy()
     if meteorology_pairs.empty:
         raise ValueError("No matched meteorological hierarchy evidence")
@@ -196,25 +350,48 @@ def publish(root):
     digest.to_csv(digest_path, index=False)
     unique_runs = sum(a["unique_simulations_accumulated"] for a in audits)
     title = "Swedish weather completion: building and event sensitivity"
-    body = f"<h1>{title}</h1><p class='lead'>Qualified and evaluated: {len(audits)}/18 planned "
+    body = f"<h1>{title}</h1><p class='lead'>Weather references meeting source criteria: {len(audits)}/18 planned "
     body += f"location-years, {coverage['reference_building_location_years']}/108 "
-    body += f"reference building combinations and {unique_runs:,} unique annual "
+    body += f"raw evaluated reference building combinations and {unique_runs:,} unique annual "
     body += "EnergyPlus simulations. Unsupported reference years remain explicit.</p>"
+    if qualification is not None:
+        body += f"<p>{manifest['qualified_reference_building_rows']:,} warning-free reference building combinations across "
+        body += f"{manifest['qualified_reference_site_years']:,} location-years qualify for building-outcome analysis. "
+        body += "These qualified reference counts differ from raw evaluations when reference runs have diagnostics.</p>"
     body += f"<p>{manifest['deduplicated_comparisons']:,} non-reference building "
     body += f"responses after duplicate physical masks are removed; {len(pairs):,} "
-    body += f"paired current/previous-hierarchy responses ({len(meteorology_pairs):,} meteorological pairs). Every accepted run has "
+    body += f"paired current/previous-hierarchy responses ({len(meteorology_pairs):,} meteorological pairs). Building outcomes retained for inference have "
     body += "zero EnergyPlus warnings, severe errors and fatal errors.</p>"
+    if qualification is not None:
+        body += f"<p>The raw catalogue contains {qualification['raw_building_rows']:,} building responses; "
+        body += f"{qualification['qualified_building_rows']:,} qualify for building-outcome analysis and "
+        body += f"{qualification['excluded_building_rows']:,} are excluded. "
+        body += f"{qualification['excluded_simulations']:,} canonical simulations have unqualified diagnostics. "
+        body += "Every warning excludes all outcomes conservatively, including annual heating that Core accepts under a heating-only exception. "
+        body += "A flagged reference also excludes related comparisons for that building/year. Physically valid weather and anomaly comparisons remain available. "
+        body += "Original results and diagnostic warnings are preserved: "
+        body += "<a href='analysis/diagnostic-exclusions.csv'>excluded outcomes</a>, "
+        body += "<a href='analysis/diagnostics-qualification.json'>qualification evidence</a>.</p>"
     body += "<p>The current hierarchy uses observations → interpolation for gaps "
     body += "up to 3 hours → assessed same-year donors → bounded daily profiles "
     body += "up to 48 hours → same-year ERA5. Donors must pass blocked holdout "
     body += "and engineering checks against original observations. Their limited "
     body += "median-offset correction is retained only when holdout error improves.</p>"
     body += "<h2>Current versus previous hierarchy</h2><p>The comparison below "
-    body += "pairs the same original evidence, weather mask and building. Annual "
+    body += "pairs the same original evidence, weather mask and building. Both "
+    body += "hierarchies use the same donor assessment and physical derivation; "
+    body += "the controlled change is recovery priority. Annual "
     body += "errors use kWh/m² and peak errors W/m². The 95th percentiles describe "
     body += "the selected responses and are not population confidence limits. "
     body += "Separate seasonal random panels from deliberately selected event "
     body += "outages; three-hour and long-gap pairs may legitimately be identical.</p>"
+    body += "<p>Duration means the gap length per block. Each seasonal-random "
+    body += "weather file contains four blocks, one in each season, withholding "
+    body += "4× that many hours in total. Each weather-event file contains one "
+    body += "block, withholding 1× that many hours. Method comparisons are "
+    body += "paired within each sampling stratum; differences between random "
+    body += "and event error magnitudes also reflect these different exposure "
+    body += "budgets, not only the severity of the weather.</p>"
     view = digest[
         [
             "sampling",
@@ -297,6 +474,8 @@ def publish(root):
                     "unsupported_truth_panels",
                     "unsupported_method_panels",
                     "panels_with_all_buildings_evaluated",
+                    "panels_with_all_buildings_qualified",
+                    "engine_unqualified_panels",
                 )
                 if c in available
             ]
@@ -317,6 +496,17 @@ def publish(root):
             )
         forced.append(item)
     body += display(pd.DataFrame(forced))
+    if method_plot_sha is not None:
+        for scope, caption in (
+            ("meteorology", "Meteorological methods on common eligible masks"),
+            ("solar", "Solar methods against the hybrid radiation reference"),
+        ):
+            name = f"common-method-{scope}-errors"
+            body += f"<figure><img src='analysis/method-figures/{name}.png' alt='{caption}'>"
+            body += (
+                f"<figcaption>{caption}. <a href='analysis/method-figures/{name}.svg'>"
+            )
+            body += "Vector figure</a></figcaption></figure>"
     body += "<h2>Heatwaves and other anomalies</h2><p>Absolute heatwaves require "
     body += "at least three complete local-standard-time days with Tmax ≥25°C; "
     body += "cold spells require Tmin ≤−10°C. Relative warm/cold spells, wind "
@@ -327,6 +517,16 @@ def publish(root):
     body += "peak values are stricter measures. Event peak-hour timing is not "
     body += "scored. Denominators below count exposed "
     body += "event occurrences across scenarios, not independent climate events.</p>"
+    if event_plot_sha is not None:
+        body += "<figure><img src='analysis/event-figures/paired-weather-event-preservation.png' "
+        body += "alt='Paired heatwave, cold-spell and wind episode preservation'>"
+        body += "<figcaption>Matched meteorological weather cases, independent of "
+        body += "building responses. Exact episode boundaries and peak values "
+        body += "are stricter than any-overlap matching. "
+        body += (
+            "<a href='analysis/event-figures/paired-weather-event-preservation.svg'>"
+        )
+        body += "Vector figure</a></figcaption></figure>"
     exposed = events.loc[
         events.reference_exposed_events.gt(0) | events.new_candidate_event_count.gt(0)
     ]
@@ -357,7 +557,9 @@ def publish(root):
     )
     body += "<h2>Reference weather and interpretation limits</h2>" + display(sources)
     body += "<ul><li>Six geographical strata, three selected years and six "
-    body += "synthetic EPSM Core profiles establish sensitivity for this campaign. "
+    body += "synthetic EPSM Core profiles define the campaign design. Building "
+    body += "inference uses only the diagnostic-qualified coverage shown above; "
+    body += "exclusions can remove entire years or geographical strata. "
     body += "They do not establish national population uncertainty or certainty "
     body += "about future weather. Building responses share the same climates.</li>"
     body += "<li>Reference native gaps are bounded common background; only "
@@ -378,7 +580,9 @@ def publish(root):
     body += "changed peak hours. Untouched reference peaks are kept separate "
     body += "from exposed peaks; all tied maximum hours are compared exactly.</li></ul>"
     body += "<p><a href='report.html'>Original frozen-runner catalogue</a> · "
-    body += "<a href='summary.csv'>All raw comparisons</a> · "
+    body += (
+        "<a href='summary.csv'>All raw comparisons, including excluded outcomes</a> · "
+    )
     body += "<a href='analysis/manifest.json'>Analysis provenance</a> · "
     body += "<a href='coverage.json'>Coverage</a> · "
     body += "<a href='source-selection/plan.json'>Source selection</a></p>"
@@ -400,6 +604,11 @@ def publish(root):
         "report_script_sha256": sha(Path(__file__).read_bytes()),
         "analysis_manifest_sha256": sha(manifest_bytes),
         "plot_manifest_sha256": sha(plot_bytes),
+        "event_plot_manifest_sha256": event_plot_sha,
+        "method_plot_manifest_sha256": method_plot_sha,
+        "diagnostics_qualification_sha256": manifest["outputs"].get(
+            "diagnostics-qualification.json"
+        ),
         "coverage_sha256": sha(coverage_bytes),
         "matrix_sha256": sha(matrix_bytes),
         "audit_sha256": audit_hashes,

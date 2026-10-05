@@ -21,6 +21,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+try:
+    from examples import qualify_weather_campaign_results as Q
+except ModuleNotFoundError:
+    import qualify_weather_campaign_results as Q
+
 IDENTITY = [
     "site_id",
     "year",
@@ -240,6 +245,9 @@ def paired_hierarchy(rows, metrics):
         if not pairs[field + "_new"].equals(pairs[field + "_old"]):
             raise ValueError("Paired hierarchies have different peak exposure")
     result = pairs[IDENTITY].copy()
+    # Keep each qualified source row addressable through report publication.
+    for side in ("new", "old"):
+        result["case_id_" + side] = pairs["case_id_" + side]
     result["donor_all_five_series_available"] = (
         pairs.donor_all_five_series_available_new
     )
@@ -308,18 +316,23 @@ def paired_hierarchy(rows, metrics):
 
 
 def common_method_cohort(rows, matrix):
-    """Retain only physical panels evaluated for every supported forced method."""
+    """Retain full physical panels qualified for every supported method and building."""
     selected = []
     if rows.empty:
         return rows.copy()
-    for _, group in rows.groupby(IDENTITY, dropna=False, sort=True):
+    physical = [key for key in IDENTITY if key != "building_id"]
+    buildings = set(matrix["buildings"])
+    for _, group in rows.groupby(physical, dropna=False, sort=True):
         scope, hours = group.iloc[0][["scope", "gap_hours"]]
         required = set(
             matrix["meteorology_methods" if scope == "meteorology" else "solar_methods"]
         )
         if hours > 48:
             required.discard("temporal")
-        if required.issubset(set(group.method)):
+        if set(group.building_id) == buildings and all(
+            required.issubset(set(building.method))
+            for _, building in group.groupby("building_id", sort=True)
+        ):
             selected.append(group.loc[group.method.isin(required)])
     return pd.concat(selected, ignore_index=True) if selected else rows.iloc[:0].copy()
 
@@ -480,9 +493,9 @@ def availability_status(panel, method, decision):
     return status
 
 
-def analyze(root, output, *, provisional=False):
+def analyze(root, output, *, provisional=False, qualifier=None):
     """Read verified snapshots and publish an independent, explicitly scoped analysis."""
-    root, output = Path(root), Path(output)
+    root, output = Path(root).resolve(), Path(output).resolve()
     matrix_bytes = (root / "matrix.json").read_bytes()
     matrix = json.loads(matrix_bytes)
     captured, panels, availability, source_records, inputs, incomplete = (
@@ -624,6 +637,7 @@ def analyze(root, output, *, provisional=False):
                             "sampling": panel["sampling"],
                             "gap_hours": panel["duration_hours"],
                             "method": method,
+                            "case_id": case_id,
                             "physical_signature": physical,
                             "status": status,
                             "truth_ready": panel["status"] == "ready",
@@ -637,16 +651,49 @@ def analyze(root, output, *, provisional=False):
             + "; ".join(incomplete)
         )
     rows = pd.concat(captured, ignore_index=True) if captured else pd.DataFrame()
-    selected, metrics = _metrics(rows)
+    # A supplied qualifier supports explicit isolated fixtures only; real CLI
+    # analyses always authenticate every diagnostic artifact through Q.
+    annotated, exclusions, qualification = (qualifier or Q.qualify_results)(
+        root, rows, inputs
+    )
+    if qualifier is not None:
+        qualification["evidence_mode"] = "injected_fixture"
+    qualified = annotated.loc[annotated.engine_outcome_qualified.eq(True)].copy()
+    raw_selected = (
+        deduplicate(annotated.loc[annotated.method.ne("reference")])
+        if not annotated.empty
+        else annotated.copy()
+    )
+    selected, metrics = _metrics(qualified)
     selected = deduplicate(selected)
     pairs, paired_summary = paired_hierarchy(selected, metrics)
     common = common_method_cohort(selected, matrix)
-    events, event_summary = events_summary(root, selected, plans, inputs)
-    weather, weather_errors = weather_summary(selected)
-    common_weather, common_weather_errors = weather_summary(common)
+    events, event_summary = events_summary(root, raw_selected, plans, inputs)
+    weather, weather_errors = weather_summary(raw_selected)
+    raw_common = common_method_cohort(raw_selected, matrix)
+    common_weather, common_weather_errors = weather_summary(raw_common)
     availability_table = pd.DataFrame(availability)
     availability_summary = []
     if not availability_table.empty:
+        qualification_counts = (
+            {
+                (site, year, case_id): (
+                    int(group.engine_outcome_qualified.sum()),
+                    int((~group.engine_outcome_qualified).sum()),
+                )
+                for (site, year, case_id), group in annotated.groupby(
+                    ["site_id", "year", "case_id"], sort=True
+                )
+            }
+            if not annotated.empty
+            else {}
+        )
+        counts = [
+            qualification_counts.get((r.site_id, r.year, r.case_id), (0, 0))
+            for r in availability_table.itertuples(index=False)
+        ]
+        availability_table["qualified_buildings"] = [c[0] for c in counts]
+        availability_table["engine_unqualified_buildings"] = [c[1] for c in counts]
         identity = [
             "site_id",
             "year",
@@ -688,10 +735,26 @@ def analyze(root, output, *, provisional=False):
                     "panels_with_all_buildings_evaluated": int(
                         group.evaluated_buildings.eq(len(matrix["buildings"])).sum()
                     ),
+                    "qualified_building_comparisons": int(
+                        group.qualified_buildings.sum()
+                    ),
+                    "engine_unqualified_building_comparisons": int(
+                        group.engine_unqualified_buildings.sum()
+                    ),
+                    "panels_with_any_qualified_building": int(
+                        group.qualified_buildings.gt(0).sum()
+                    ),
+                    "panels_with_all_buildings_qualified": int(
+                        group.qualified_buildings.eq(len(matrix["buildings"])).sum()
+                    ),
+                    "engine_unqualified_panels": int(
+                        group.engine_unqualified_buildings.gt(0).sum()
+                    ),
                 }
             )
     outputs = {
         "sources.csv": pd.DataFrame(source_records),
+        "diagnostic-exclusions.csv": exclusions,
         "deduplicated-comparisons.csv": selected,
         "method-error-summary.csv": summarize(selected, metrics, ("method",)),
         "hierarchy-pairs.csv": pairs,
@@ -714,6 +777,13 @@ def analyze(root, output, *, provisional=False):
         path = output / name
         data.to_csv(path, index=False)
         output_hashes[name] = fingerprint(path.read_bytes())
+    qualification_path = output / "diagnostics-qualification.json"
+    qualification_path.write_text(
+        json.dumps(qualification, indent=2, allow_nan=False) + "\n"
+    )
+    output_hashes[qualification_path.name] = fingerprint(
+        qualification_path.read_bytes()
+    )
     manifest = {
         "status": "provisional" if provisional or incomplete else "complete",
         "created_utc": datetime.now(UTC).isoformat(),
@@ -729,6 +799,31 @@ def analyze(root, output, *, provisional=False):
         "outputs": output_hashes,
         "incomplete": incomplete,
         "captured_building_rows": len(rows),
+        "qualified_building_rows": len(qualified),
+        "qualified_reference_building_rows": int(qualified.method.eq("reference").sum())
+        if not qualified.empty
+        else 0,
+        "qualified_reference_site_years": len(
+            qualified.loc[
+                qualified.method.eq("reference"), ["site_id", "year"]
+            ].drop_duplicates()
+        )
+        if not qualified.empty
+        else 0,
+        "excluded_building_rows": len(exclusions),
+        "qualified_nonreference_building_rows": int(
+            qualified.method.ne("reference").sum()
+        )
+        if not qualified.empty
+        else 0,
+        "excluded_nonreference_building_rows": int(
+            exclusions.method.ne("reference").sum()
+        )
+        if not exclusions.empty
+        else 0,
+        "raw_deduplicated_comparisons": len(raw_selected),
+        "diagnostics_qualification_policy": qualification["policy"],
+        "diagnostics_qualification_sha256": output_hashes[qualification_path.name],
         "deduplicated_comparisons": len(selected),
         "hierarchy_pairs": len(pairs),
         "common_method_comparisons": len(common),
@@ -737,8 +832,10 @@ def analyze(root, output, *, provisional=False):
             "tiny_cooling_flag": "Reference annual cooling below1 kWh/m2 is a descriptive flag, not an exclusion; absolute errors include these rows",
             "deduplication": "One physical scope/column-set/duration/UTC-block mask per site-year/building/method/sampling stratum; anchor labels retained",
             "hierarchy_cohort": "All common new/old automatic panels, including partial donor-series references",
-            "forced_method_cohort": "Only identical physical panels evaluated for every scheduled method, excluding temporal above48h",
-            "availability": "Distinct weather panels, independent of six building responses; truth eligibility, source/validation failures and evaluated coverage remain separate",
+            "forced_method_cohort": "Only identical physical panels with every matrix building qualified for every scheduled method, excluding temporal above48h; losing one method/profile removes the entire panel from building method ranking",
+            "engine_qualification": "Every warning excludes all building outcomes conservatively, including annual heating accepted under a scoped Core exception; unqualified baselines exclude related profile/site-year outcomes. Diagnostic receipts, results, logs, models and canonical/alias weather are authenticated without modifying frozen evidence",
+            "availability": "Distinct weather panels, independent of six building responses; truth eligibility, source/validation failures and RAW evaluated coverage remain separate. Qualified building comparisons and engine-unqualified panels describe outcome eligibility without relabeling available weather",
+            "weather_engine_independence": "Weather errors and event preservation use RAW deduplicated weather cases even when building outcomes are engine-unqualified; common-method weather tables require weather availability rather than engine-qualified outcomes",
             "weather_errors": "Masked-input errors once per physical outage/method; weather units remain C, RH percentage points, pressurePa, windm/s, circular degrees, radiationW/m2; building responses do not multiply weather evidence",
             "peak_preservation": "Preservation fractions only among baseline peaks hidden by the outage; unexposed and zero/numerical baseline peaks reported separately. Numerical floor1e-6W/m2 excludes meaningless zero-load timing",
             "event_preservation": "Event counts, not lost hours; exposed reference events matched by any overlap and exact bounds/peak reported separately, once per weather case independent of buildings. Fractions describe event-exposure scenarios, not independent unique weather events",

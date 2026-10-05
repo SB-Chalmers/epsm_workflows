@@ -167,6 +167,68 @@ def test_idempotence_and_identical_frozen_rerender(tmp_path):
         assert not (candidate(folder, i) / "weather.epw").exists()
 
 
+@pytest.mark.parametrize("archive_path_style", ["absolute", "relative"])
+def test_equivalent_absolute_and_relative_logical_paths_preserve_archive_receipts(
+    tmp_path, monkeypatch, archive_path_style
+):
+    """A frozen rerender may change path spelling while retaining exact EPW bytes."""
+    folder = make_year(tmp_path, candidates=1)
+    monkeypatch.chdir(tmp_path)
+    catalogue_path = folder / "case-catalogue.json"
+    catalogue = json.loads(catalogue_path.read_text())
+    if archive_path_style == "relative":
+        for record in catalogue["cases"]:
+            record["path"] = str(Path(record["path"]).relative_to(tmp_path))
+        write_json(catalogue_path, catalogue)
+    A.archive_completed_weather(tmp_path)
+    case = candidate(folder)
+    sidecar = case / "weather-archive.json"
+    original_sidecar = sidecar.read_bytes()
+    original_archive = (case / "weather.epw.gz").read_bytes()
+    original_weather_receipt = (case / "weather-receipt.json").read_bytes()
+    # Mimic the original runner regenerating a catalogue and identical plain EPW.
+    for record in catalogue["cases"]:
+        actual = folder / "cases" / record["case_id"] / "weather.epw"
+        record["path"] = (
+            str(actual.relative_to(tmp_path))
+            if archive_path_style == "absolute"
+            else str(actual)
+        )
+    write_json(catalogue_path, catalogue)
+    (case / "weather.epw").write_bytes(EPW)
+    result = A.archive_completed_weather(tmp_path)
+    assert result["new_archives"] == 0
+    assert result["validated_existing_archives"] == 1
+    assert result["plain_files_removed"] == 1
+    assert sidecar.read_bytes() == original_sidecar
+    assert (case / "weather.epw.gz").read_bytes() == original_archive
+    assert (case / "weather-receipt.json").read_bytes() == original_weather_receipt
+    assert not (case / "weather.epw").exists()
+
+
+def test_logical_path_with_same_basename_but_different_actual_file_is_rejected(
+    tmp_path, monkeypatch
+):
+    folder = make_year(tmp_path, candidates=1)
+    monkeypatch.chdir(tmp_path)
+    A.archive_completed_weather(tmp_path)
+    case = candidate(folder)
+    (case / "weather.epw").write_bytes(EPW)
+    sidecar = case / "weather-archive.json"
+    saved = json.loads(sidecar.read_text())
+    saved["logical_weather_path"] = str(
+        folder.relative_to(tmp_path) / "cases" / "different-case" / "weather.epw"
+    )
+    write_json(sidecar, saved)
+    original_sidecar = sidecar.read_bytes()
+    original_archive = (case / "weather.epw.gz").read_bytes()
+    with pytest.raises(ValueError, match="archive receipt differs"):
+        A.archive_completed_weather(tmp_path)
+    assert (case / "weather.epw").read_bytes() == EPW
+    assert sidecar.read_bytes() == original_sidecar
+    assert (case / "weather.epw.gz").read_bytes() == original_archive
+
+
 @pytest.mark.parametrize(
     "changed",
     [

@@ -88,12 +88,21 @@ def _archive_identity(saved: dict, case: dict) -> None:
         "compression_level": 6,
         "archive_file": "weather.epw.gz",
         "uncompressed_file": "weather.epw",
-        "logical_weather_path": case["logical_path"],
         "case_id": case["case_id"],
         "epw_sha256": case["epw_sha256"],
         "weather_receipt_sha256": case["receipt_sha256"],
     }
     if any(saved.get(key) != value for key, value in expected.items()):
+        raise ValueError(
+            "Weather archive receipt differs from its original weather receipt"
+        )
+    # A resumed catalogue may spell the same repository-local path relatively.
+    # Keep the original archive receipt immutable and compare its actual target.
+    logical = saved.get("logical_weather_path")
+    if (
+        not isinstance(logical, str)
+        or Path(logical).resolve() != Path(case["logical_path"]).resolve()
+    ):
         raise ValueError(
             "Weather archive receipt differs from its original weather receipt"
         )

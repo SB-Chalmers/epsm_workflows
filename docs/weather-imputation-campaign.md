@@ -1,48 +1,81 @@
 # Swedish weather completion sensitivity campaign
 
-This is a **staged expansion in progress** of the completed
-[Gothenburg 2023 experiment](weather-imputation-sensitivity.md). The planned
-matrix is six geographical strata × three actual years × six synthetic
-building profiles: 18 reference weather datasets and 108 reference
-building/site/year combinations. These numbers describe the design, not
-completed coverage or an accuracy guarantee. Actual availability and progress
-are recorded in the output receipts and `coverage.json`.
+The **v5 campaign execution and numerical analysis are complete**. The design
+requested six Swedish geographical strata × three actual years × six synthetic
+building profiles. Seventeen of the 18 requested site-years supplied eligible
+reference weather; Kiruna 2018 remains explicitly unavailable. Conservative
+engine-warning screening leaves building results for **12 site-years in five
+strata**, while weather and event evidence retain **17 site-years in all six**.
+The [final synthesis](../output/weather-imputation-campaign-2026-10-05-v5/synthesis.html)
+and [publication receipt](../output/weather-imputation-campaign-2026-10-05-v5/synthesis-receipt.json)
+passed final provenance verification. The concise
+[current automatic-versus-reference paper](../output/weather-imputation-campaign-2026-10-05-v5/paper-summary.html)
+presents methods, results and four summary figures.
 
-The corrected final campaign is **v5: interrupted at the disk guard, incomplete**. Its
-source plan retains 17 qualified references and one unsupported combination,
-Kiruna 2018. The completed v3 pilot is a stage-one precursor with its own frozen
-runtime and accepted receipts, not a completed multi-site campaign. The v1/v2
-launch directories remain excluded diagnostics and contribute no accepted
-campaign comparisons. Source qualification does not establish completed
-weather-imputation coverage. V4 remains partial diagnostic evidence with its
-original immutable runtime and receipts. V5 freezes the EPSM study harness at
-`6ce7f10`, following the earlier `93d5959` harness. It uses smhi2epw `5930c07`,
-which includes the recovery hierarchy in `3bb5a87` and the cloud-source/unit
-corrections in `5930c07`. Core and EnergyPlus remain unchanged. A research-harness
-solar-path correction required fresh driver hashes and a fresh output directory.
-Validation passed **245 tests: 182 frozen-harness, one additional disk-guard test,
-eight separate analysis, 30 archival and 24 final-report tests**. Ruff was clean
-for the owned code/test files. The [runtime manifest](../output/weather-imputation-campaign-2026-10-05-v5/runtime/manifest.json)
-records exact hashes and the [campaign log](../output/weather-imputation-campaign-2026-10-05-v5/full-campaign.log)
-records execution progress. Neither validation nor partial v4 results establish
-completed v5 coverage. Completed runs and pinned sources are preserved. The
-remaining matrix requires adequate disk space before execution can resume;
-storage failure does not reduce the study's intended scope.
+This controlled experiment measures how automatic weather completion changes
+ideal sensible heating/cooling demand, hourly load peaks, peak timing and weather
+events relative to a common reference. It does not validate real building energy
+use. Six synthetic profiles provide different thermal responses to the same
+weather evidence, rather than six independent climate observations.
 
-The campaign compares how weather completion affects delivered sensible
-heating/cooling demand, hourly peaks, timing and weather events. Each method
-uses the same withheld original evidence and each building receives the same
-weather cases. Buildings supply different thermal responses; they do not add
-independent climates to the sample.
+The frozen EPSM harness is `6ce7f10`, following `93d5959`. Smhi2epw is `5930c07`,
+including the recovery hierarchy introduced in `3bb5a87` and subsequent
+cloud-source/unit corrections. Core and EnergyPlus 24.2 are unchanged. The
+[runtime manifest](../output/weather-imputation-campaign-2026-10-05-v5/runtime/manifest.json)
+records exact identities. The final consolidated weather-study suite passed
+**390 tests**; Ruff was clean on the 17 owned Python files at that checkpoint.
+Tests support implementation checks; the execution audits establish coverage.
 
-The verified **PROVISIONAL** v5 snapshot contains 1,792 raw building rows,
-including 18 consumed reference rows for the three Malmö years, 1,558
-deduplicated non-reference comparisons, 354 paired hierarchy responses and
-336 rows in the common forced-method cohort. There are **zero full-matrix
-site/year completion audits**. These are accumulated partial comparisons, not
-completed coverage of those years or the wider climate matrix. The
-[provisional analysis manifest](../output/weather-imputation-campaign-2026-10-05-v5/provisional-analysis/manifest.json)
-binds the checkpoint's tables and inputs; final conclusions remain pending.
+## Completed coverage and qualification
+
+[Raw coverage](../output/weather-imputation-campaign-2026-10-05-v5/coverage.json),
+[analysis manifest](../output/weather-imputation-campaign-2026-10-05-v5/analysis/manifest.json)
+and [diagnostic qualification](../output/weather-imputation-campaign-2026-10-05-v5/analysis/diagnostics-qualification.json)
+use different, explicit denominators:
+
+| Evidence | Final count | Interpretation |
+| --- | ---: | --- |
+| Requested / source-ready / source-unavailable site-years | 18 / 17 / 1 | Kiruna 2018 has no eligible full-meteorology reference |
+| Completed raw site-year case matrices | 17 | Unavailable/unsupported methods remain recorded |
+| Raw reference building rows | 102 | Six profiles × 17 weather references |
+| Raw building rows / unique canonical engine executions | 18,366 / 9,450 | Labelled cases can share one identical annual simulation |
+| Qualified / excluded building rows | 13,104 / 5,262 | Includes reference and non-reference rows |
+| Qualified reference building rows / site-years / strata | 72 / 12 / 5 | Engine-qualified climate coverage is smaller than weather coverage |
+| Qualified deduplicated non-reference building responses | 10,248 | One physical mask per building/method/sampling stratum |
+| Qualified current-automatic responses / physical masks | 2,916 / 486 | 1,452 meteorology and 1,464 solar building responses |
+| Current-automatic weather-only physical masks | 691 | 343 meteorology + 348 solar, across 17 site-years |
+| Qualified meteorology hierarchy pairs / masks | 1,452 / 242 | Current and previous automatic priority share evidence |
+| Qualified forced common-method responses | 7,650 | 127 meteorology and 244 solar masks, all six profiles |
+
+The raw weather catalogue contains 3,616 labelled panel/method comparisons:
+3,044 available and evaluated, 321 unsupported and 251 unavailable. The 904
+planned panels include 882 truth-ready and 22 unsupported panels. Current
+automatic completion succeeds for **882/882 truth-ready named panels** across
+both scopes, including **343/343 distinct meteorological masks**. These are
+observed study availability results, not a guarantee that external providers
+always return usable data for every request.
+
+Whole-run qualification authenticates original diagnostics, receipts, logs,
+models and canonical/alias weather. Any engine warning excludes **all** building
+outcomes from that run, even when Core permits its annual-heating result alone.
+An unqualified reference also excludes associated building/site-year
+comparisons; aliases inherit the canonical run's qualification. Valid weather
+errors and event diagnostics remain available independently.
+
+There are 2,742 warned canonical runs and 5,496 raw actual/recurring warning
+markers. Five complete building-reference years are excluded: Östersund
+2021/2023, Luleå 2021 and Kiruna 2021/2023. Additional warned candidates are
+excluded within otherwise qualified years. Original warnings and receipts are
+retained. The warnings concern EnergyPlus wet-bulb iteration and do not establish
+that the input weather was physically unrealistic: one Gothenburg example uses
+approximately 4.3°C, 39% RH and 98,640 Pa; its reported −123.39°C was an internal
+solver iteration, not exported air temperature. The full raw campaign is not
+warning-free.
+
+The outcome screen deliberately sacrifices coverage for a consistent,
+warning-free building cohort. It is not a random loss of climates. No building
+conclusion is supported for Kiruna, and the weather evidence in all six strata
+must not be presented as building evidence in all six.
 
 ## Sites, years and reference weather
 
@@ -159,39 +192,12 @@ keeps the floor boundary invariant in every paired comparison.
 It omits regional and seasonal ground-temperature variation, soil/snow physics
 and uncertainty in floor-to-ground heat transfer. Consequently, absolute demand
 and sensitivity results are conditional on this explicit boundary and do not
-establish realistic ground conditions for Swedish buildings. A preliminary
-ambient-annual-mean prescription triggered an EnergyPlus 24.2 warning and Core
-rejection; that attempt supplies no accepted building results. The campaign
-uses the native boundary without an exception to Core's diagnostics policy.
+establish realistic ground conditions for Swedish buildings. The preliminary ambient-derived ground prescription supplies no accepted
+campaign results. The final prescription requires no ground-warning exception.
 
 ## Outages and methods
 
-### Completed v3 pilot
-
-The [v3 pilot report](../output/weather-imputation-campaign-2026-10-05-v3/report.html)
-covers Göteborg-Landvetter 2023, all six building profiles, meteorology only,
-seed 11 and four-season random panels with 48-/168-hour blocks. It contains
-**60 paired building rows**: six references and 54 non-reference comparisons,
-using **36 unique annual simulations**. All accepted runs have zero warnings,
-severe errors and fatal errors. This is one site/year, not 60 climates.
-
-For the 48-hour new/legacy hierarchy comparison, the new priority reduces
-hourly heating-load MAE for **6/6 profiles** and cooling-load MAE for **4/6**.
-Absolute annual-energy error improves for only **1/6 profiles in each mode**.
-The priorities are identical at 168 hours in this pilot, so those pairs are
-ties. These are reconstruction-sensitivity comparisons against the reference
-simulation, not improvements against measured building demand. Full paired
-values are in [paired-hierarchy.csv](../output/weather-imputation-campaign-2026-10-05-v3/paired-hierarchy.csv).
-
-The random masks cover **zero baseline annual-peak hours and zero absolute
-heatwave/cold-spell hours**. Peak matches and unchanged absolute spells therefore
-provide little evidence about preservation during outages affecting those
-events. This limitation motivates the additional weather-event anchors carried
-from v4 into v5.
-
-### V5 panel design and source inventory
-
-Each scope has 3-, 12-, 48- and 168-hour outages. Meteorological panels withhold
+Each scope has 3-, 12-, 48- and 168-hour outages **per block**. Meteorological panels withhold
 all five required variables; solar panels withhold GHI and direct components.
 Recovery methods are paired by an evidence identifier independent of buildings
 and methods. Receipts store exact UTC hour-ending timestamps and selected-cell
@@ -212,6 +218,14 @@ There are two separate sampling groups:
   simulated loads. An unavailable complete window containing the exact anchor
   is unsupported, and the experiment does not select a different event. Such
   windows may cross seasonal boundaries but stay within the year.
+
+Duration labels refer to each block, not the total withheld hours in a file.
+Random seasonal files have four blocks: 12/48/192/672 hours in total for
+3/12/48/168-hour blocks. Event files contain one block and therefore hide only
+3/12/48/168 hours. Absolute error magnitudes across these sampling groups also
+reflect different exposure budgets; they cannot isolate a random-versus-event
+effect. Method comparisons remain paired within the same sampling stratum and
+physical mask.
 
 Reconstruction contexts are built after removing **all** selected original
 cells. Native filling in the context must also exclude hidden truth. Scored
@@ -268,185 +282,270 @@ The inventory derived from the 17 qualified references contains **904 panels:
 882 ready and 22 unsupported**, using **62 available weather anchors** across
 the site/years. It includes 191 repeated scope/duration/mask combinations across
 panel labels. These labels retain the intended event comparisons, but repeated
-masked evidence does not supply independent observations. Panel readiness
-describes eligible withheld truth, not a completed weather reconstruction or
-accepted building simulation; comparison-source qualification can reduce the
-evaluated counts further.
+masked evidence does not supply independent observations. Panel readiness describes eligible withheld truth. Final reconstruction and
+engine-outcome qualification are counted separately below.
 
-## Metrics and interpretation
+## Metrics and observed automatic-completion errors
 
-The catalogue records annual heating/cooling energy, absolute and percentage
-differences, area-normalized demand, hourly peak magnitude, all tied peak
-timestamps, exact peak-timing matches, nearest signed timing shifts and demand
-at the baseline peak. It also includes hourly load error and energy differences
-over masked intervals plus a fixed 168-hour recovery window. That carryover
-window is a diagnostic choice, not a proven limit on thermal memory. Percentage
-errors with zero reference demand are undefined and remain missing.
+Each completed EPW is compared with the common reference weather and simulation
+for its site/year/profile. Building metrics include absolute annual sensible
+heating/cooling errors in kWh/m², hourly mean peak errors in W/m², all tied peak
+hours, peak-hour-set preservation, nearest signed timing shifts, full-year
+hourly-load MAE and errors over the masked interval plus a fixed 168-hour
+recovery window. That recovery window is diagnostic, not a demonstrated limit
+on thermal memory. Peak magnitude and timing are measured; load duration and
+peak duration are not.
 
-Weather errors use bias, MAE and RMSE, with circular wind-direction differences.
-Event records include overlapping, lost/new, split/merged episodes, durations
-and extrema. Operational definitions include daily Tmax ≥25°C for three complete
-days, Tmin ≤−10°C for three days, baseline-pinned warm/cold daily percentiles,
-wind ≥10 m/s, temperature jumps >5°C/hour, nighttime solar and the broad
-2,000 W/m² solar guard. These are transparent diagnostics, not official warning
-definitions. Temperature-extreme anchors do not guarantee that a complete
-heatwave is masked or that reconstruction preserves an event.
+The following **current automatic versus reference** values are pooled median /
+p95 absolute annual errors in kWh/m² for random seasonal panels. Each file
+contains four blocks, so the total missing hours exceed the block duration.
+Each group includes 36 physical masks and 216 building responses over 12
+site-years, except meteorology/48 hours, which includes 35 masks and 210
+responses. All six profiles qualify for each included mask.
 
-Summaries stratify by building, scope, sampling group, outage length and method.
-They retain valid denominators, site/year counts and evidence-panel counts.
-Empirical medians, 5th/95th percentiles and absolute-error tails describe the
-evaluated scenarios; site/year median summaries also avoid giving sites with
-more available panels extra weight. They are **not population confidence
-intervals**. Repeated masks and building responses do not create additional
-independent climate samples. Paired hierarchy differences use the same
-site/year/building/evidence identifiers; smaller absolute error is a comparison
-within this matrix, not proof of a universally best recovery method.
+| Scope | Block duration, h | Total hidden hours/file | Heating median / p95, kWh/m² | Cooling median / p95, kWh/m² |
+| --- | ---: | ---: | ---: | ---: |
+| Meteorology | 3 | 12 | 0.00105 / 0.00845 | 0.000705 / 0.00424 |
+| Meteorology | 12 | 48 | 0.00690 / 0.0586 | 0.00584 / 0.0408 |
+| Meteorology | 48 | 192 | 0.0174 / 0.114 | 0.0135 / 0.0646 |
+| Meteorology | 168 | 672 | 0.0816 / 0.886 | 0.0610 / 0.261 |
+| Solar | 3 | 12 | 0.00323 / 0.0344 | 0.00206 / 0.0189 |
+| Solar | 12 | 48 | 0.0130 / 0.115 | 0.0118 / 0.0963 |
+| Solar | 48 | 192 | 0.104 / 0.271 | 0.0306 / 0.293 |
+| Solar | 168 | 672 | 0.252 / 0.996 | 0.222 / 1.063 |
 
-A separate analysis helper outside the frozen runtime groups identical physical
-outages by site/year, scope, duration, hidden columns and exact masked timestamps,
-independent of anchor labels. It retains the label mapping and checks that
-duplicated responses agree before assigning one physical-mask weight within
-each building/method/sampling stratum. This complements the original labelled-case summaries; it does not
-change the frozen weather generation, building results or receipts. It cannot
-turn the purposeful site/year selection into a representative climate sample.
+These descriptive tails show increasing annual sensitivity with longer random
+outages within this selected matrix. Event-panel medians may be near numerical
+zero because a warm event need not cause heating; p95 and the actual exposed
+peak/event counts are necessary alongside medians. Smaller median error does
+not guarantee a small worst case or preserve an extreme. The underlying
+[qualified deduplicated comparisons](../output/weather-imputation-campaign-2026-10-05-v5/analysis/deduplicated-comparisons.csv)
+retain building, source-year, scope, sampling and duration identities.
 
-## Runtime correction, recovery and evidence reuse
+Percentages are undefined at zero reference demand. Cooling below 1 kWh/m² is
+flagged because percentages can be unstable; these cases remain in absolute
+error summaries. Full-year hourly MAE averages over 8,760 hours and therefore
+dilutes short outages. Empirical quantiles describe the selected scenarios,
+**not population confidence intervals or guaranteed bounds**. Pooled responses,
+equal-site-year means and equal-location summaries answer different weighting
+questions. The six profiles, duplicate anchor labels and repeated episode
+exposures do not create independent climates.
 
-V4's research harness called solar finishing directly for forced ERA5 and Erbs
-cases. When the original solar input used STRÅNG alone, that path omitted the
-optional measured-radiation placeholder created by production's solar-input
-preparation. Cleanup then raised `KeyError`. Production already creates the
-placeholder, so the correction changes the **research harness**, with no
-smhi2epw production change. The corrected harness initializes the absent
-optional column to NaN. Two regression cases verify that absent and all-NaN
-optional inputs produce identical ERA5/Erbs output, preserve unmasked fields
-and invent no measured radiation.
+Weather metrics use bias, MAE and RMSE, with circular wind-direction errors.
+Operational event definitions include daily Tmax ≥25°C for three complete LST
+days, daily Tmin ≤−10°C for three days, baseline-pinned daily percentile warm/cold
+spells, wind ≥10 m/s, temperature jumps >5°C/hour, nighttime solar and a broad
+2,000 W/m² solar plausibility guard. They are transparent diagnostics rather
+than official warning definitions. Thresholds are fixed to the reference for
+candidate comparisons. Temperature anchors do not guarantee that a complete
+spell is masked.
 
-V4's immutable driver cannot receive that fix. V5 therefore uses a fresh output
-directory and frozen runtime, leaving the partial v4 evidence intact. Accepted
-v4 simulations can be reused only after regenerating identical EPW bytes and
-checking compiled-model hashes and SQL metrics under the new Core specification
-and run identity. Physical building specifications exclude the EPW file path,
-so relocation alone does not change the building. Migration provenance links
-the original receipts; those receipts are left unchanged. Failed or incomplete
-attempts are not accepted results.
+Peak-hour-set preservation is assessed only when a positive reference annual
+peak was actually hidden; unexposed peaks supply no evidence of recovery during
+the peak. In meteorological event panels, current automatic completion retains
+the exact exposed peak-hour set in 10/22 heating and 13/28 cooling responses
+with 12-hour blocks, and 11/26 heating and 14/38 cooling responses with 48-hour
+blocks. The denominators are exposed building responses, not unique weather
+episodes. Heatwave overlap also does not prove preservation of episode maxima:
+no exposed heatwave at 3/12/48-hour blocks retains both exact bounds and exact
+peak temperature under either automatic priority in this matrix. Plausible
+extremes must remain visible in uncertainty and provenance reporting.
 
-A separate macOS execution stall occurred even for EnergyPlus `--version`:
-process sampling located a wait in system timezone-service initialization.
-The initial `TZ=UTC` mitigation still allowed intermittent startup waits. V5
-therefore uses **native execution with `TZ=UTC0`**, an explicit POSIX zero-offset
-timezone that avoids zone-name lookup and allows the macOS services needed by
-initialization. A 100-attempt `--version` probe recorded no timeouts. This changes
-process initialization without changing the engine or scientific packages. The
-EPW/SQL weather calendar remains fixed local standard time UTC+1; the process
-setting does not relabel weather hours.
-[Recovery evidence](../output/weather-imputation-campaign-2026-10-05-v5/execution-environment/timezone-recovery.json)
-and process samples are retained, with interrupted attempts quarantined in v4.
+### Conditional priority and forced-method evidence
 
-## V5 execution and retaining evidence
+The archived paired hierarchy comparison supports donor-before-daily-profiles
+as a practical meteorological default for 4–48-hour gaps, while retaining
+per-parameter assessment, fallback and warnings. With 12-/48-hour blocks,
+current priority usually reduces annual heating and full-year heating-load MAE.
+Equal-site-year mean absolute annual heating error for random panels is
+0.0153 versus 0.0233 kWh/m² at 12 hours and 0.0377 versus 0.0979 at 48 hours;
+for temperature-event panels it is 0.00705 versus 0.0201 and 0.0374 versus
+0.0591. Meteorological 3-/168-hour scored outputs are exact ties between
+priorities. This finding is specific to the tested policy change and cohort.
 
-The native full-matrix session stopped at the **2 GiB free-disk guard**. The
-filesystem reached approximately 328 MiB free. Lossless archival and cache
-deduplication recovered roughly 3 GB of task-owned storage. Available space
-continues to fluctuate; the study has no active simulation process. Accepted
-runs, sources and the immutable matrix remain intact.
-The interrupted state is incomplete evidence, not a failed recovery method or
-a source-unavailability outcome. Full execution requires adequate storage;
-freeing at least 10 GiB or providing another output drive is the next operational
-step.
+Cooling and peaks remain mixed. Random 12-hour annual cooling error is slightly
+higher under current priority (0.0126 versus 0.0117 kWh/m² equal-site-year mean).
+Random 48-hour cooling peak error is also higher (0.0713 versus 0.0328 W/m²),
+despite more individual improvements than deteriorations. One Malmö 2021 school
+case increases from 0.910 to 7.43 W/m². The paired result does not establish
+universal superiority, guaranteed heatwave preservation or safe sizing from a
+completed file. Full values and denominator-specific summaries are retained in
+[hierarchy-pairs.csv](../output/weather-imputation-campaign-2026-10-05-v5/analysis/hierarchy-pairs.csv)
+and [hierarchy-summary.csv](../output/weather-imputation-campaign-2026-10-05-v5/analysis/hierarchy-summary.csv).
 
-Resume with explicit **one-stratum batches**, keeping all planned years,
-profiles, scopes, seeds and durations within each stratum. This avoids queuing
-preparation across all 17 qualified site/years while disk capacity is constrained.
-The following commands illustrate planning and such resumption after storage is
-available; they do not establish completed coverage.
-From the repository root, use a Python environment with EPSM Core,
-`smhi2epw` dependencies and EnergyPlus 24.2. The driver snapshots Core from the
-first experiment's saved packages and smhi2epw from the sibling checkout before
-importing either. Source and driver hashes, execution environment and the
-EnergyPlus binary/schema identify the campaign. Changed pinned identities
-require a separate output directory. `--energyplus` selects the executable and
-must remain consistent across stages.
+Forced assessed transfer of all five meteorological parameters qualifies for
+139/343 distinct truth-ready masks (40.5%). The labelled inventory instead has
+184/434 available donor comparisons (42.4%); it includes repeated panel labels.
+Neither denominator is the production per-parameter donor acceptance rate.
+Automatic completion may use an accepted partial donor and another fallback
+for the remaining parameters. The 127-mask qualified common meteorological
+cohort is donor-selected and cannot establish that donors universally outperform
+ERA5. Solar method comparisons use hybrid measured-GHI/STRÅNG proxy truth,
+not independently measured DNI/DHI. Its apparent ERA5 advantages therefore
+cannot be interpreted as independent beam/diffuse-radiation validation.
+
+## Figures and retained evidence
+
+Four current-automatic summary figures show annual and peak error medians/p95,
+actually exposed peak-hour preservation and weather-event overlap/bounds.
+Their variation bands describe tested scenarios rather than population
+confidence bounds. The [summary manifest](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/manifest.json)
+binds the completed analysis and original numeric tables.
+
+| Current automatic versus reference | PNG | SVG | PDF | Numeric data |
+| --- | --- | --- | --- | --- |
+| Annual demand errors | [PNG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/automatic-annual-errors.png) | [SVG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/automatic-annual-errors.svg) | [PDF](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/automatic-annual-errors.pdf) | [CSV](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/load-error-summary.csv) |
+| Hourly mean peak errors | [PNG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/automatic-peak-errors.png) | [SVG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/automatic-peak-errors.svg) | [PDF](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/automatic-peak-errors.pdf) | [CSV](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/load-error-summary.csv) |
+| Exposed annual peak-hour sets | [PNG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/automatic-peak-timing.png) | [SVG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/automatic-peak-timing.svg) | [PDF](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/automatic-peak-timing.pdf) | [CSV](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/peak-timing-summary.csv) |
+| Weather-event preservation | [PNG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/automatic-weather-events.png) | [SVG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/automatic-weather-events.svg) | [PDF](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/automatic-weather-events.pdf) | [CSV](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/weather-event-summary.csv) |
+
+The [building-specific summary](../output/weather-imputation-campaign-2026-10-05-v5/analysis/summary-figures/building-error-summary.csv)
+retains differences among the bundled synthetic profiles without attributing
+them to one building factor. Reproduce the current-only summaries with
+`python -m examples.plot_weather_campaign_summary CAMPAIGN/analysis`, replacing
+`CAMPAIGN` with the complete analysis's campaign directory.
+
+Seven further campaign figures are generated from the qualified analysis. They document
+the full method study; the separate concise paper focuses on current automatic
+completion versus reference. Each figure manifest binds the exact analysis and
+source-table hashes. Numeric data remain available for independent inspection.
+
+| Figure | PNG | SVG |
+| --- | --- | --- |
+| Paired annual errors | [PNG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/figures/paired-annual-errors.png) | [SVG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/figures/paired-annual-errors.svg) |
+| Paired peak errors | [PNG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/figures/paired-peak-errors.png) | [SVG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/figures/paired-peak-errors.svg) |
+| Building-profile changes | [PNG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/figures/building-profile-changes.png) | [SVG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/figures/building-profile-changes.svg) |
+| Exposed peak timing | [PNG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/figures/exposed-peak-timing.png) | [SVG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/figures/exposed-peak-timing.svg) |
+| Weather-event preservation | [PNG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/event-figures/paired-weather-event-preservation.png) | [SVG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/event-figures/paired-weather-event-preservation.svg) |
+| Common meteorological methods | [PNG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/method-figures/common-method-meteorology-errors.png) | [SVG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/method-figures/common-method-meteorology-errors.svg) |
+| Common solar methods | [PNG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/method-figures/common-method-solar-errors.png) | [SVG](../output/weather-imputation-campaign-2026-10-05-v5/analysis/method-figures/common-method-solar-errors.svg) |
+
+Figure source data and receipts: [paired/load CSV](../output/weather-imputation-campaign-2026-10-05-v5/analysis/figures/figure-data.csv)
+and [manifest](../output/weather-imputation-campaign-2026-10-05-v5/analysis/figures/manifest.json);
+[event CSV](../output/weather-imputation-campaign-2026-10-05-v5/analysis/event-figures/figure-data.csv)
+and [manifest](../output/weather-imputation-campaign-2026-10-05-v5/analysis/event-figures/manifest.json);
+[common-method CSV](../output/weather-imputation-campaign-2026-10-05-v5/analysis/method-figures/figure-data.csv)
+and [manifest](../output/weather-imputation-campaign-2026-10-05-v5/analysis/method-figures/manifest.json).
+
+Further tables retain [physical panel identities](../output/weather-imputation-campaign-2026-10-05-v5/analysis/physical-panels.csv),
+[weather errors](../output/weather-imputation-campaign-2026-10-05-v5/analysis/weather-comparisons.csv),
+[event exposure](../output/weather-imputation-campaign-2026-10-05-v5/analysis/event-exposure-comparisons.csv),
+[method availability](../output/weather-imputation-campaign-2026-10-05-v5/analysis/method-availability.csv),
+[forced common-method outcomes](../output/weather-imputation-campaign-2026-10-05-v5/analysis/common-method-comparisons.csv)
+and [diagnostic exclusions](../output/weather-imputation-campaign-2026-10-05-v5/analysis/diagnostic-exclusions.csv).
+The original [raw report](../output/weather-imputation-campaign-2026-10-05-v5/report.html)
+is the diagnostic catalogue. The verified
+[final synthesis](../output/weather-imputation-campaign-2026-10-05-v5/synthesis.html)
+and [publication receipt](../output/weather-imputation-campaign-2026-10-05-v5/synthesis-receipt.json)
+separate raw coverage from qualified outcomes. The
+[current-only paper](../output/weather-imputation-campaign-2026-10-05-v5/paper-summary.html)
+focuses on automatic completion versus the common reference, with four summary
+figures and verified local artifact links.
+
+## Runtime, archives and reproduction
+
+The [completed controller receipt](../output/weather-imputation-campaign-2026-10-05-v5/execution-environment/process-resume-20261005T155946-a12acd81.json)
+records final verification without engine reruns. The
+[independent final audit index](../output/weather-imputation-campaign-2026-10-05-v5/analysis-audits/independent-final-audit-index-20261005T161556Z.json)
+checks the 14 scientific driver files, 77 package files, 69 pinned source frames,
+246 cached API responses and all 9,450 canonical receipt/model identities;
+compiled schedules and selected lossless SQL round trips are also verified.
+The [final analysis-bound audit index](../output/weather-imputation-campaign-2026-10-05-v5/analysis-audits/independent-final-analysis-bound-audit-index-20261005T163822Z.json)
+records the independent audit binding to the final regenerated analysis.
+Identical operative EPWs can share an engine run while keeping their labelled
+comparison receipts. This explains why 18,366 building rows are not 18,366
+independent simulations.
+
+Execution used native processes with `TZ=UTC0`. This avoids a macOS timezone
+service stall during EnergyPlus startup; the EPW and SQL weather clock stays
+fixed UTC+1 local standard time. The guarded scheduler runs at most three
+children, each executing one original full site/year with `--workers 1`, and
+serializes global metadata/reporting after children join. Controller locks,
+completed-case verification and shared-matrix equality checks protect resume.
+Operational scheduler changes and postanalysis do not change the frozen
+scientific drivers, weather, buildings, Core or engine.
+
+V5 retains **all SQL and hourly loads losslessly**. Reference SQL is
+self-contained XZ preset 3. Candidate SQL uses standard Zstandard 1.5.6 level 12
+with `--patch-from` the exact immutable reference SQL for the same
+building/site/year; its matching dictionary is required for decoding. One plain
+reference dictionary remains recoverable from XZ. Compressed, original and
+dictionary SHA-256 checks precede consumption, and the decoder version/binary
+identity is pinned. Hourly CSV uses gzip level 6 with a sidecar preserving the
+logical Core path. Identical models use hash-verified hardlinks. Auxiliary
+ESO/MTR/EIO/BND/RDD/MDD/HTML traces are removed; receipts, models, specifications,
+error logs, schedules, SQL and hourly evidence remain.
+
+The [completed EPW archive operation](../output/weather-imputation-campaign-2026-10-05-v5/execution-environment/post-weather-storage-ab024de0fd744769b1839223f67507e7.json)
+retains 3,044 candidate EPWs as verified lossless gzip: 5.109 GB of original
+bytes occupies 0.574 GB. Baseline EPWs remain plain. Compression and sidecars
+preserve original weather/Core receipts and can restore exact bytes with
+`gzip -dk weather.epw.gz`. Qualification fingerprints the final plain/archive
+representation: archive **before** final analysis. Changing representations
+later requires regenerating qualification, analysis, plots and synthesis.
+
+A fresh execution needs enough free disk space for the full study. The 2 GiB
+free-space guard preserves completed cases at interruption; it does not reduce
+the scientific scope. Resume the saved campaign from the repository root using
+its pinned drivers/packages and identical engine:
 
 ```sh
-TZ=UTC0 ../epsm_core/.venv/bin/python -m examples.weather_imputation_sensitivity.run_campaign \
-  --phase plan --output output/weather-imputation-campaign-2026-10-05-v5
+TZ=UTC0 PYTHONDONTWRITEBYTECODE=1 ../epsm_core/.venv/bin/python -u \
+  -m examples.resume_weather_imputation_campaign \
+  --output output/weather-imputation-campaign-2026-10-05-v5 --processes 3
+```
 
-TZ=UTC0 ../epsm_core/.venv/bin/python -m examples.weather_imputation_sensitivity.run_campaign \
-  --phase run --select-sites malmo --workers 3 \
-  --output output/weather-imputation-campaign-2026-10-05-v5
+Manual work selection remains one site/year at a time, retaining all frozen
+profiles/scopes/seeds/durations:
 
-TZ=UTC0 ../epsm_core/.venv/bin/python -m examples.weather_imputation_sensitivity.run_campaign \
-  --phase run --select-sites gothenburg --workers 3 \
+```sh
+TZ=UTC0 PYTHONDONTWRITEBYTECODE=1 ../epsm_core/.venv/bin/python \
+  -m examples.weather_imputation_sensitivity.run_campaign \
+  --phase run --select-sites malmo --select-years 2018 --workers 1 \
   --output output/weather-imputation-campaign-2026-10-05-v5
 ```
 
-Repeat the site batch for `stockholm`, `ostersund`, `lulea` and `kiruna` as storage
-allows, retaining Kiruna 2018's unsupported receipt. Site filters select work
-from the same matrix; they do not change its design. One to three workers bound
-simultaneous engine/API load. `--output` selects a campaign
-directory; the corrected campaign uses
-`output/weather-imputation-campaign-2026-10-05-v5`.
-Use the campaign's saved driver/packages when resuming an archived version;
-the current working tree may implement a different experiment.
+The frozen runner supports `--phase plan`, `sources` and `run`; it has no
+`--phase report`. Changed scientific source/runtime identities require a new
+output directory. After all workers have joined and raw matrix coverage has
+been verified, the separate final postprocessing sequence is:
 
-Outputs retain matrix/runtime receipts, raw responses, source frames,
-panel plans, supported/unavailable case catalogues, validated EPWs, weather
-errors and per-weather event records. Building folders retain Core models,
-specifications, accepted diagnostics, error logs, hourly loads and receipts.
-V3 preserves SQL losslessly as gzip with compressed/uncompressed fingerprints.
-V5 carries forward v4's implemented and tested storage scheme, retaining
-**all SQL and hourly loads losslessly**:
+```sh
+weather_study_root=output/weather-imputation-campaign-2026-10-05-v5
+weather_study_python=../epsm_core/.venv/bin/python
 
-- Reference SQL uses self-contained XZ, preset 3. Each candidate SQL uses
-  standard Zstandard 1.5.6 at level 12 with `--patch-from` the exact reference
-  SQL for the same building/site/year. One immutable plain reference dictionary
-  is retained and can be recovered from its XZ archive. Candidate patches need
-  this matching dictionary to decode.
-- Compressed, uncompressed and dictionary SHA-256 fingerprints are checked
-  before consuming restored SQL. The matrix pins the Zstandard executable's
-  version and SHA-256 identity.
-- Hourly CSVs use gzip level 6 with an archive sidecar; the original Core receipt
-  retains its logical CSV path. Identical compiled models retain their paths
-  through SHA-verified hardlinks to a content-addressed pool.
-- Atomic publication and recovery protect interrupted archive writes. A free
-  disk guard stops work below 2 GiB; resumption uses the same immutable matrix.
+PYTHONDONTWRITEBYTECODE=1 "$weather_study_python" -m examples.archive_weather_campaign_files \
+  "$weather_study_root"
+PYTHONDONTWRITEBYTECODE=1 "$weather_study_python" -m examples.analyze_weather_imputation_campaign \
+  "$weather_study_root" --output "$weather_study_root/analysis"
+PYTHONDONTWRITEBYTECODE=1 "$weather_study_python" -m examples.plot_weather_campaign_summary \
+  "$weather_study_root/analysis"
+PYTHONDONTWRITEBYTECODE=1 "$weather_study_python" -m examples.plot_weather_imputation_campaign \
+  "$weather_study_root/analysis"
+PYTHONDONTWRITEBYTECODE=1 "$weather_study_python" -m examples.plot_weather_campaign_events \
+  "$weather_study_root/analysis"
+PYTHONDONTWRITEBYTECODE=1 "$weather_study_python" -m examples.plot_weather_campaign_methods \
+  "$weather_study_root/analysis"
+PYTHONDONTWRITEBYTECODE=1 "$weather_study_python" -m examples.report_weather_imputation_campaign \
+  "$weather_study_root"
+```
 
-A second utility outside the frozen runtime archives candidate EPWs only after
-an entire site/year passes its completion audit, summary-checkpoint verification
-and building/case coverage checks. It uses lossless gzip level 6 and a separate
-`weather-archive.json`, verifies compressed and original EPW hashes, and leaves
-baseline EPWs and original weather/Core receipts unchanged. Incomplete site/years
-are skipped. Restore exact candidate bytes with `gzip -dk weather.epw.gz`,
-retaining the archive and sidecar. Archive eligibility is not a claim that all
-v5 site/years have finished or been archived.
+Final commands omit `--provisional` and refuse incomplete or changed evidence.
+The standalone common-method command is
+`python -m examples.plot_weather_campaign_methods /ABS/v5/analysis`, with the
+absolute analysis folder and appropriate EPSM environment substituted.
 
-After the full runner stopped, a separately recorded storage operation also
-archived already prepared candidate EPWs with no active simulations. Its
-[interruption archive receipt](../output/weather-imputation-campaign-2026-10-05-v5/execution-environment/interrupted-v5-weather-storage.json)
-preserves exact hashes and records that the campaign was not marked complete.
-It archived 452 prepared EPWs, saving approximately 669 MB. These files remain
-losslessly recoverable; compressing them does not qualify
-their unexecuted building comparisons as results.
-
-A measured multifamily candidate compressed from 10.6 MB SQL to approximately
-0.69 MB with the reference patch, versus 5.56 MB with gzip. This is one storage
-benchmark, not a guaranteed ratio for the matrix. Bulky auxiliary
-ESO/MTR/EIO/BND/RDD/MDD/HTML traces are removed. Aggregate CSVs,
-`paired-hierarchy.csv`, `coverage.json` and HTML describe only accumulated
-available comparisons. A completed selected batch does not mean the wider
-matrix is complete.
-
-Independent postanalysis and plotting operate outside the frozen simulation
-runtime. The plotter produces four scientific figures in PNG and SVG, using
-verified paired tables. Incomplete checkpoints require `--provisional`, and the
-figures carry that label. The separate final-report publisher verifies complete
-coverage, per-site/year audits, input/table hashes and the analysis/figure
-receipts before writing a synthesis. It refuses incomplete evidence. These
-tools support the eventual final report; their presence does not establish
-that v5 has finished.
-
-The old Gothenburg study uses its own saved `reproduction/run_study.py`, pinned
-packages and original sources. Follow the [historical reproduction command](../examples/weather_imputation_sensitivity/README.md#environment-and-run)
-into a fresh output directory; the current generalized modules cannot reproduce
-its frozen hierarchy and model assumptions.
+Earlier outputs retain their own identities. V1/v2 are excluded launch
+diagnostics; v3 is a completed one-site/year pilot with 60 labelled building
+rows, 36 unique annual runs and zero engine warnings. Its random masks hide no
+annual peaks or absolute-spell hours, limiting its event conclusions. V4 is
+partial diagnostic evidence. A research-only optional solar placeholder fix
+required a fresh v5 harness; production already created the placeholder and
+needed no corresponding code change. Imported accepted runs retain original
+receipts and migration provenance after identical regenerated weather, model
+and SQL checks. The original Gothenburg experiment is described in
+[its historical study note](weather-imputation-sensitivity.md); reproduction
+requires its saved `reproduction/run_study.py`, pinned packages and original
+sources in a fresh output directory, as shown in the
+[historical reproduction command](../examples/weather_imputation_sensitivity/README.md#environment-and-run).
+The current generalized modules do not reproduce those earlier assumptions.
