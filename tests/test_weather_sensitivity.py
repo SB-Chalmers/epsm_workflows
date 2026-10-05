@@ -229,3 +229,36 @@ def test_physical_solar_events_on_exported_calendar_use_fixed_lst():
     frame = inputs(index)
     frame.attrs["location"] = {"latitude": W.LAT, "longitude": W.LON, "time_zone": 1}
     assert detect_events(frame)["summary"]["nighttime_solar"]["hours"] == 0
+
+
+@pytest.mark.parametrize("method", ["era5", "erbs"])
+def test_forced_solar_without_measured_ghi_matches_empty_optional_column(method):
+    index = pd.date_range("2023-06-01", periods=72, freq="h", tz="UTC")
+    reference = inputs(index)
+    cosine = np.maximum(
+        W.automatic.solar_zenith(index - pd.Timedelta(minutes=30), W.LAT, W.LON)[1], 0
+    )
+    reference["ghi"] = 400 * cosine
+    reference["dni"] = np.where(cosine > 0, 180.0, 0.0)
+    reference["dirh"] = reference["dni"] * cosine
+    model = reference.copy()
+    model["ghi"] = 600 * cosine
+    mask = pd.Series(False, index=index)
+    mask.iloc[10:13] = True
+    before = reference.copy(deep=True)
+    with_optional = reference.assign(**{W.C.METOBS_RADIATION_COLUMN: np.nan})
+    actual, _ = W.reconstruct(
+        reference, reference, reference, model, mask, method, "solar"
+    )
+    expected, _ = W.reconstruct(
+        with_optional, with_optional, with_optional, model, mask, method, "solar"
+    )
+    pd.testing.assert_frame_equal(
+        actual, expected.drop(columns=W.C.METOBS_RADIATION_COLUMN)
+    )
+    pd.testing.assert_frame_equal(actual.loc[~mask], reference.loc[~mask])
+    pd.testing.assert_frame_equal(reference, before)
+    assert np.isfinite(actual.loc[mask, W.SOLAR]).all().all()
+    assert W.C.METOBS_RADIATION_COLUMN not in actual
+    if method == "era5":
+        assert not np.allclose(actual.loc[mask, "ghi"], reference.loc[mask, "ghi"])

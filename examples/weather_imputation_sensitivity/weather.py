@@ -350,6 +350,11 @@ def reconstruct(
     decisions = {}
     if scope == "solar":
         working = originals.copy(deep=True)
+        # Forced ERA5/Erbs tests bypass _solar_inputs, which normally creates
+        # this optional placeholder before _finish_solar removes it. Absence
+        # represents STRANG-only input, never a measured zero.
+        if C.METOBS_RADIATION_COLUMN not in working:
+            working[C.METOBS_RADIATION_COLUMN] = np.nan
         working.loc[mask, columns] = np.nan
         if C.METOBS_RADIATION_COLUMN in working:
             working.loc[mask, C.METOBS_RADIATION_COLUMN] = np.nan

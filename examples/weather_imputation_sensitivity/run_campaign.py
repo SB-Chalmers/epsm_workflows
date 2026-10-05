@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-DEFAULT_OUTPUT = Path("output/weather-imputation-campaign-2026-10-05-v4")
+DEFAULT_OUTPUT = Path("output/weather-imputation-campaign-2026-10-05-v5")
 PREVIOUS = Path("output/weather-imputation-sensitivity-2026-10-05-v1")
 MET_METHODS = ("temporal", "donor_assessed", "era5", "automatic", "automatic_legacy")
 SOLAR_METHODS = ("temporal", "era5", "automatic")
