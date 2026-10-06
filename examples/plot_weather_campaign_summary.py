@@ -23,9 +23,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
+from matplotlib.ticker import MaxNLocator, PercentFormatter
+
+from examples import summarize_weather_campaign_uncertainty as U
 
 HOURS = (3, 12, 48, 168)
-SCOPES = (("meteorology", "Meteorological gaps"), ("solar", "Solar gaps"))
+SCOPES = (("meteorology", "Temperature, wind & other readings"), ("solar", "Sunshine"))
+WEATHER_COLORS = {"meteorology": "#0072B2", "solar": "#CC8A00"}
+GAP_LABELS = ("3 hours", "12 hours", "2 days", "1 week")
 SAMPLINGS = (
     ("random_seasonal", "Seasonal random", "#0072B2"),
     ("weather_extremes", "Temperature events", "#D55E00"),
@@ -195,206 +200,384 @@ def event_summary(rows):
     return pd.DataFrame(records)
 
 
-def error_figure(summary, quantity):
-    """Show typical and upper-tail absolute errors without comparing algorithms."""
-    fig, axes = plt.subplots(2, 2, figsize=(11, 7.5), sharey="row")
-    unit, label = ("kwh_m2", "kWh/m²") if quantity == "annual" else ("w_m2", "W/m²")
-    for row, mode in enumerate(("heating", "cooling")):
-        metric = f"absolute_{quantity}_{mode}_error_{unit}"
-        for column, (scope, title) in enumerate(SCOPES):
-            ax = axes[row, column]
-            selected = summary.loc[summary.scope.eq(scope) & summary.metric.eq(metric)]
-            counts = {}
-            for sampling, _, color in SAMPLINGS:
-                group = (
-                    selected.loc[selected.sampling.eq(sampling)]
-                    .set_index("gap_hours")
-                    .reindex(HOURS)
-                )
-                counts[sampling] = group.building_responses
-                ax.plot(
-                    range(4),
-                    group["median"],
-                    "o-",
-                    color=color,
-                    linewidth=1.7,
-                    markersize=4,
-                )
-                ax.plot(
-                    range(4),
-                    group.empirical_p95,
-                    "--",
-                    color=color,
-                    linewidth=1.4,
-                    alpha=0.8,
-                )
-            ticks = [
-                f"{h}h\nR{int(counts['random_seasonal'].get(h, 0))}/E{int(counts['weather_extremes'].get(h, 0))}"
-                for h in HOURS
-            ]
-            ax.set_xticks(range(4), ticks)
-            ax.set_xlabel("Gap length per block", fontsize=9)
-            if column == 0:
-                ax.set_ylabel(f"Absolute {mode} error ({label})", fontsize=10)
-            ax.set_title(title, fontsize=11)
-            ax.spines[["top", "right"]].set_visible(False)
-            ax.grid(axis="y", color="#dddddd", linewidth=0.6)
-            ax.tick_params(labelsize=9)
-        # Shared axes must encompass both weather groups. Fixing the first
-        # panel's limits before plotting the second can silently clip its tail.
-        maximum = summary.loc[summary.metric.eq(metric), "empirical_p95"].max()
-        for ax in axes[row]:
-            ax.set_ylim(0, max(float(maximum) * 1.1, 1e-8))
+def exposed_peak_summary(rows):
+    """Magnitude uncertainty where a positive reference peak intersects the outage.
+
+    Pooled peaks outside an outage often have zero change. They cannot establish
+    how well completion preserves an extreme when its weather data are missing.
+    Keep each mode's exposure cohort separate and retain its exact denominator.
+    """
+    records = []
+    keys = ["scope", "sampling", "gap_hours"]
+    for mode in ("heating", "cooling"):
+        exposed = rows.loc[
+            rows[f"baseline_peak_{mode}_w_m2"].gt(1e-6)
+            & rows[f"baseline_{mode}_peak_hidden"].eq(True)
+        ]
+        metric = f"absolute_peak_{mode}_error_w_m2"
+        for labels, group in exposed.groupby(keys, sort=True):
+            records.append(
+                dict(zip(keys, labels))
+                | {
+                    "metric": metric,
+                    "building_responses": len(group),
+                    "exposed_positive_peaks": len(group),
+                    "physical_masks": len(group[PHYSICAL].drop_duplicates()),
+                    "site_years": len(group[["site_id", "year"]].drop_duplicates()),
+                    "locations": group.site_id.nunique(),
+                    "median": float(group[metric].median()),
+                    "empirical_p95": float(group[metric].quantile(0.95)),
+                    "maximum": float(group[metric].max()),
+                }
+            )
+    return pd.DataFrame(
+        records,
+        columns=keys
+        + [
+            "metric",
+            "building_responses",
+            "exposed_positive_peaks",
+            "physical_masks",
+            "site_years",
+            "locations",
+            "median",
+            "empirical_p95",
+            "maximum",
+        ],
+    )
+
+
+def _base_figure(title, subtitle, *, width=11.2):
+    """One shared visual language: two readable panels and a plain-language key."""
+    fig, axes = plt.subplots(1, 2, figsize=(width, 7.2), sharey=True)
+    fig.suptitle(title, x=0.055, y=0.98, ha="left", fontsize=19, fontweight="bold")
+    fig.text(0.055, 0.905, subtitle, fontsize=12, color="#45566a")
+    for ax, mode in zip(axes, ("Heating", "Cooling")):
+        ax.set_title(mode, loc="left", fontsize=16, fontweight="bold", pad=14)
+        ax.set_yticks(range(4), GAP_LABELS)
+        ax.set_ylim(3.55, -0.55)
+        ax.tick_params(axis="both", labelsize=12, length=0, pad=9)
+        ax.spines[["top", "right", "left"]].set_visible(False)
+        ax.spines["bottom"].set_color("#b5bec7")
+        ax.grid(axis="x", color="#e8edf1", linewidth=0.8)
+        ax.set_axisbelow(True)
+        for y in (0.5, 1.5, 2.5):
+            ax.axhline(y, color="#eef1f4", linewidth=0.8)
+    axes[0].set_ylabel("Length of each gap", fontsize=12, labelpad=12)
+    fig.subplots_adjust(top=0.74, bottom=0.29, left=0.13, right=0.96, wspace=0.17)
+    return fig, axes
+
+
+def _weather_legend(fig, *, median_key=False):
     handles = [
-        Line2D([], [], color=color, label=title) for _, title, color in SAMPLINGS
-    ]
-    handles += [
-        Line2D([], [], color="#444444", linestyle=style, label=title)
-        for style, title in (("-", "Median"), ("--", "95th percentile"))
+        Line2D(
+            [],
+            [],
+            color=WEATHER_COLORS[scope],
+            marker="o",
+            linewidth=2,
+            markersize=7,
+            label=label,
+        )
+        for scope, label in SCOPES
     ]
     fig.legend(
         handles=handles,
-        loc="upper center",
-        bbox_to_anchor=(0.5, 0.94),
-        ncol=4,
+        loc="upper left",
+        bbox_to_anchor=(0.045, 0.88),
+        ncol=2,
         frameon=False,
+        fontsize=12,
+        columnspacing=2.5,
     )
-    fig.suptitle(
-        f"{'Annual demand' if quantity == 'annual' else 'Hourly peak'} errors after automatic weather completion",
-        y=0.985,
-        fontsize=15,
-        fontweight="bold",
+    if median_key:
+        fig.text(
+            0.055,
+            0.145,
+            "Dot = middle case (median). Line ends at the higher-end error (95th percentile).",
+            fontsize=11,
+            color="#45566a",
+        )
+
+
+def error_figure(summary, quantity, *, relative=False):
+    """Annual seasonal errors or exposed event-peak errors, never mixed budgets."""
+    if quantity not in ("annual", "peak"):
+        raise ValueError("Summary figure quantity must be annual or peak")
+    annual = quantity == "annual"
+    if relative:
+        if not annual:
+            raise ValueError("Relative-demand figures apply only to annual demand")
+        summary = summary.copy()
+        summary["metric"] = "absolute_annual_" + summary["mode"] + "_error_kwh_m2"
+        summary["median"] = summary.median_absolute_error_pct
+        summary["empirical_p95"] = summary.empirical_p95_absolute_error_pct
+    sampling = "random_seasonal" if annual else "weather_extremes"
+    unit, label = ("kwh_m2", "kWh/m²") if annual else ("w_m2", "W/m²")
+    title = (
+        "How much does filling gaps change annual demand?"
+        if annual
+        else "How much does filling gaps change the peak load?"
     )
+    subtitle = (
+        "Seasonal outages: four gaps per year, one in each season."
+        if annual
+        else "Outages around extremes: only peaks whose weather data were missing."
+    )
+    fig, axes = _base_figure(title, subtitle)
+    selected = summary.loc[summary.sampling.eq(sampling)]
+    relevant = selected.loc[selected.metric.str.startswith(f"absolute_{quantity}_")]
+    maximum = float(relevant.empirical_p95.max()) if len(relevant) else 0.0
+    # Both modes and weather groups use one scale; room for direct endpoint labels.
+    limit = max(maximum * 1.28, 0.01)
+    for ax, mode in zip(axes, ("heating", "cooling")):
+        metric = f"absolute_{quantity}_{mode}_error_{unit}"
+        for index, (scope, _) in enumerate(SCOPES):
+            group = (
+                selected.loc[selected.scope.eq(scope) & selected.metric.eq(metric)]
+                .set_index("gap_hours")
+                .reindex(HOURS)
+            )
+            color = WEATHER_COLORS[scope]
+            for row, (_, record) in enumerate(group.iterrows()):
+                y = row + (-0.13 if index == 0 else 0.13)
+                if not np.isfinite(record.get("empirical_p95", np.nan)):
+                    ax.text(
+                        0.02 * limit, y, "No exposed peaks", va="center", fontsize=10
+                    )
+                    continue
+                median, tail = float(record["median"]), float(record.empirical_p95)
+                ax.plot(
+                    [median, tail],
+                    [y, y],
+                    color=color,
+                    linewidth=2.7,
+                    solid_capstyle="round",
+                )
+                ax.plot(
+                    tail, y, marker="|", markersize=11, color=color, markeredgewidth=2
+                )
+                ax.plot(median, y, marker="o", markersize=7, color=color)
+                precision = (2 if tail < 1 else 1) if relative else (3 if annual else 2)
+                endpoint = f"{tail:.{precision}f}" + ("%" if relative else "")
+                ax.text(
+                    tail + limit * 0.025,
+                    y,
+                    endpoint,
+                    color=color,
+                    va="center",
+                    fontsize=11,
+                    fontweight="bold",
+                )
+        ax.set_xlim(-limit * 0.015, limit)
+        if relative:
+            ax.xaxis.set_major_locator(
+                MaxNLocator(nbins=4, steps=[1, 2, 5, 10], integer=True)
+            )
+            ax.xaxis.set_major_formatter(PercentFormatter(100, decimals=0))
+            ax.set_xlabel(
+                "Absolute change from reference (%)", fontsize=12, labelpad=12
+            )
+        else:
+            ax.set_xlabel(f"Absolute change ({label})", fontsize=12, labelpad=12)
+    _weather_legend(fig, median_key=True)
     fig.text(
-        0.5,
-        0.025,
-        "R/E: building responses for random/event outages; 6 synthetic profiles share each weather record.\nRandom: 4 blocks/file; events: 1 block/file. Curves describe separate outage designs.\nAccepted transient warnings retained after hourly-load checks. Percentiles describe tested scenarios, not population uncertainty.",
-        ha="center",
-        va="bottom",
-        fontsize=9,
+        0.055,
+        0.085,
+        "About 95% of tested errors fall below the line end; individual cases can exceed it.",
+        fontsize=11,
+        color="#45566a",
     )
-    fig.subplots_adjust(
-        top=0.85, bottom=0.20, left=0.09, right=0.98, hspace=0.55, wspace=0.15
-    )
+    if relative:
+        fig.text(
+            0.055,
+            0.035,
+            "Cooling below 1 kWh/m² is omitted to avoid inflated percentages.",
+            fontsize=11,
+            color="#45566a",
+        )
     return fig
 
 
 def timing_figure(summary):
-    """Keep no exposed peaks visibly distinct from zero preservation."""
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5.5))
-    groups = [(scope, sampling) for scope, _ in SCOPES for sampling, _, _ in SAMPLINGS]
-    labels = [
-        f"{'Meteorology' if scope == 'meteorology' else 'Solar'} · {'random' if sampling == 'random_seasonal' else 'events'}"
-        for scope, sampling in groups
-    ]
+    """Show shifts exceeding one day for exposed positive annual winning peaks."""
+    fig, axes = _base_figure(
+        "Can the annual peak move by more than a day?",
+        "Annual peak hours more than 24 hours apart.",
+    )
+    selected = summary.loc[summary.sampling.eq("weather_extremes")]
     for ax, mode in zip(axes, ("heating", "cooling")):
-        values = np.full((4, 4), np.nan)
-        texts = [["—" for _ in HOURS] for _ in groups]
-        indexed = summary.loc[summary["mode"].eq(mode)].set_index(
-            ["scope", "sampling", "gap_hours"]
+        indexed = selected.loc[selected["mode"].eq(mode)].set_index(
+            ["scope", "gap_hours"]
         )
-        for row, (scope, sampling) in enumerate(groups):
-            for column, hours in enumerate(HOURS):
-                record = indexed.loc[(scope, sampling, hours)]
-                count = int(record.exposed_positive_peaks)
-                if count:
-                    same = int(record.preserved_peak_hour_sets)
-                    values[row, column] = 100 * record.preserved_fraction
-                    texts[row][column] = f"{values[row, column]:.0f}%\n{same}/{count}"
-        cmap = plt.get_cmap("YlGnBu").copy()
-        cmap.set_bad("#eeeeee")
-        im = ax.imshow(values, vmin=0, vmax=100, cmap=cmap, aspect="auto")
-        for row in range(4):
-            for column in range(4):
+        for index, (scope, _) in enumerate(SCOPES):
+            color = WEATHER_COLORS[scope]
+            for row, hours in enumerate(HOURS):
+                y = row + (-0.13 if index == 0 else 0.13)
+                if (scope, hours) not in indexed.index:
+                    count = 0
+                else:
+                    record = indexed.loc[(scope, hours)]
+                    count = int(record.exposed_positive_peaks)
+                if count == 0:
+                    ax.text(2, y, "No exposed peaks", fontsize=10, va="center")
+                    continue
+                changed = 100 * float(record.beyond24h_fraction)
+                ax.plot(changed, y, "o", markersize=8, color=color)
                 ax.text(
-                    column,
-                    row,
-                    texts[row][column],
-                    ha="center",
+                    changed + 3,
+                    y,
+                    f"{changed:.0f}%",
+                    color=color,
                     va="center",
-                    color="white" if values[row, column] > 65 else "#222222",
-                    fontsize=10,
+                    fontsize=12,
+                    fontweight="bold",
                 )
-        ax.set_xticks(range(4), [f"{hours}h" for hours in HOURS])
-        ax.set_yticks(range(4), labels)
-        ax.set_title(mode.capitalize(), fontsize=12)
-        ax.set_xlabel("Gap length per block")
-    fig.suptitle(
-        "Peak timing when the missing data cover the reference peak",
-        y=0.98,
-        fontsize=15,
-        fontweight="bold",
+        ax.set_xlim(-2, 118)
+        ax.set_xticks((0, 25, 50, 75, 100), ("0%", "25%", "50%", "75%", "100%"))
+        ax.set_xlabel(
+            "Cases with a shift larger than 24 hours", fontsize=12, labelpad=12
+        )
+    _weather_legend(fig)
+    fig.text(
+        0.055,
+        0.14,
+        "Only peaks whose weather data were missing are counted; the nearest reference peak is used.",
+        fontsize=11,
+        color="#45566a",
     )
     fig.text(
-        0.5,
-        0.035,
-        "Cells: retained / exposed positive peaks; — means no exposed positive peaks.\nUnexposed and zero-load peaks are excluded. Peaks are hourly mean sensible loads; all tied peak hours must match.\nRandom outages remove 4 blocks/file; events remove 1. These counts describe synthetic responses, not independent climates.",
-        ha="center",
-        fontsize=9,
+        0.055,
+        0.085,
+        "24 hours is a descriptive day-scale comparison, not an accuracy acceptance threshold.",
+        fontsize=11,
+        color="#45566a",
     )
-    # Position axes directly so the colorbar remains outside the second panel.
-    axes[0].set_position([0.16, 0.27, 0.30, 0.58])
-    axes[1].set_position([0.62, 0.27, 0.30, 0.58])
-    colorbar = fig.add_axes([0.935, 0.27, 0.012, 0.58])
-    fig.colorbar(im, cax=colorbar, label="Exact peak-hour sets retained (%)")
     return fig
 
 
-def event_figure(summary):
-    """Separate episode retention, unchanged duration and unchanged peak intensity."""
-    fig, axes = plt.subplots(1, 3, figsize=(12, 5.5), sharey=True)
-    columns = (
-        "exposed_events_with_any_overlap",
-        "exposed_events_with_exact_bounds",
-        "exposed_events_with_exact_bounds_and_peak",
+def event_figure(summary, temperature):
+    """Separate event-date preservation from quantitative extreme-temperature error.
+
+    Temperature changes require one unambiguous overlapping candidate episode;
+    lost and split events cannot be assigned a fabricated intensity difference.
+    Their counts remain in the exported temperature summary and date denominator.
+    """
+    fig, axes = _base_figure(
+        "Does filling gaps preserve the weather extremes?",
+        "Temperature-event outages: one gap per weather file; only exposed episodes are counted.",
     )
-    colors = ("#0072B2", "#009E73", "#E69F00")
-    for ax, (event, title) in zip(axes, EVENTS):
-        group = (
-            summary.loc[summary.event_type.eq(event)]
-            .set_index("gap_hours")
-            .reindex(HOURS)
-        )
-        exposed = group.reference_exposed_events
-        for index, (column, color) in enumerate(zip(columns, colors)):
-            fraction = group[column].div(exposed.where(exposed.gt(0))).mul(100)
-            ax.bar(np.arange(4) + (index - 1) * 0.24, fraction, width=0.23, color=color)
-        ax.set_xticks(range(4), [f"{h}h\nE{int(exposed.get(h, 0))}" for h in HOURS])
-        ax.set_title(title, fontsize=12)
-        ax.set_xlabel("Gap length per block")
-        ax.set_ylim(0, 105)
-        ax.grid(axis="y", color="#dddddd", linewidth=0.6)
-        ax.set_axisbelow(True)
-        ax.spines[["top", "right"]].set_visible(False)
-    axes[0].set_ylabel("Exposed reference episodes retained (%)")
-    handles = [
-        Line2D([], [], color=color, linewidth=7, label=title)
-        for color, title in zip(
-            colors,
-            ("Any overlap", "Same start and end", "Same start, end and intensity"),
-        )
-    ]
-    fig.legend(
-        handles=handles,
-        loc="upper center",
-        bbox_to_anchor=(0.5, 0.92),
-        ncol=3,
-        frameon=False,
-    )
-    fig.suptitle(
-        "Weather-event preservation after automatic completion",
-        y=0.985,
-        fontsize=15,
+    axes[0].set_title("Same dates", loc="left", fontsize=16, fontweight="bold", pad=14)
+    axes[1].set_title(
+        "Peak temperature change",
+        loc="left",
+        fontsize=16,
         fontweight="bold",
+        pad=14,
+    )
+    palette = {"heatwave": "#C65102", "cold_spell": "#0072B2"}
+    selected = temperature.loc[temperature.sampling.eq("weather_extremes")]
+    tails = selected.empirical_p95_abs_peak_temperature_error_c
+    largest = float(tails.max()) if np.isfinite(tails).any() else 0.0
+    limit = max(largest * 1.3, 0.1)
+    for index, (event, label) in enumerate(EVENTS[:2]):
+        dates = summary.loc[summary.event_type.eq(event)].set_index("gap_hours")
+        values = selected.loc[selected.event_type.eq(event)].set_index("gap_hours")
+        color = palette[event]
+        for row, hours in enumerate(HOURS):
+            y = row + (-0.13 if index == 0 else 0.13)
+            if hours in dates.index and int(dates.loc[hours].reference_exposed_events):
+                record = dates.loc[hours]
+                fraction = (
+                    100
+                    * int(record.exposed_events_with_exact_bounds)
+                    / int(record.reference_exposed_events)
+                )
+                axes[0].plot(fraction, y, "o", color=color, markersize=7)
+                axes[0].text(
+                    fraction + 3,
+                    y,
+                    f"{fraction:.0f}%",
+                    color=color,
+                    fontsize=11,
+                    fontweight="bold",
+                    va="center",
+                )
+            else:
+                axes[0].text(2, y, "No exposed episodes", fontsize=10, va="center")
+            if hours not in values.index or not int(
+                values.loc[hours].matched_exposed_events
+            ):
+                axes[1].text(
+                    0.02 * limit, y, "No matched episodes", fontsize=10, va="center"
+                )
+                continue
+            record = values.loc[hours]
+            middle = float(record.median_abs_peak_temperature_error_c)
+            tail = float(record.empirical_p95_abs_peak_temperature_error_c)
+            axes[1].plot(
+                [middle, tail],
+                [y, y],
+                color=color,
+                linewidth=2.7,
+                solid_capstyle="round",
+            )
+            axes[1].plot(tail, y, "|", markersize=11, color=color, markeredgewidth=2)
+            axes[1].plot(middle, y, "o", markersize=7, color=color)
+            axes[1].text(
+                tail + limit * 0.025,
+                y,
+                f"{tail:.1f}°C",
+                color=color,
+                fontsize=11,
+                fontweight="bold",
+                va="center",
+            )
+    axes[0].set_xlim(-2, 118)
+    axes[0].set_xticks((0, 25, 50, 75, 100), ("0%", "25%", "50%", "75%", "100%"))
+    axes[0].set_xlabel(
+        "Events with unchanged start and end dates", fontsize=11, labelpad=12
+    )
+    axes[1].set_xlim(-limit * 0.015, limit)
+    axes[1].set_xlabel(
+        "Absolute change in hottest / coldest temperature (°C)",
+        fontsize=11,
+        labelpad=12,
+    )
+    fig.legend(
+        handles=[
+            Line2D(
+                [],
+                [],
+                color=palette[event],
+                marker="o",
+                markersize=7,
+                linewidth=2,
+                label=label,
+            )
+            for event, label in EVENTS[:2]
+        ],
+        loc="upper left",
+        bbox_to_anchor=(0.045, 0.88),
+        ncol=2,
+        frameon=False,
+        fontsize=12,
+        columnspacing=3,
     )
     fig.text(
-        0.5,
-        0.035,
-        "E: exposed reference episodes, counted once per weather mask; episodes can recur across outage scenarios.\nTemperature-event outages: 1 block/file. They do not target wind peaks. Weather evidence includes 17 source-years.\nSame start/end preserves episode duration; intensity is peak temperature or wind speed. Event peak-hour timing was not evaluated.",
-        ha="center",
-        fontsize=9,
+        0.055,
+        0.145,
+        "Temperature: dot = middle case; line end = 95th percentile, for matched episodes only.",
+        fontsize=11,
+        color="#45566a",
     )
-    fig.subplots_adjust(top=0.80, bottom=0.25, left=0.07, right=0.98, wspace=0.15)
+    fig.text(
+        0.055,
+        0.085,
+        "Lost or split episodes are excluded from temperature errors. Detailed counts accompany the figure.",
+        fontsize=11,
+        color="#45566a",
+    )
     return fig
 
 
@@ -407,7 +590,9 @@ def plot(root):
         raise ValueError("Paper figures require a complete campaign analysis")
     rows = automatic_rows(read_table(root, manifest, "deduplicated-comparisons.csv"))
     summary, timing = summarize(rows), timing_summary(rows)
+    exposed = exposed_peak_summary(rows)
     events = event_summary(read_table(root, manifest, "event-exposure-comparisons.csv"))
+    uncertainty = U.build_uncertainty_tables(root)
     output = root / "summary-figures"
     output.mkdir(exist_ok=True)
     outputs = {}
@@ -415,16 +600,32 @@ def plot(root):
         ("load-error-summary.csv", summary),
         ("building-error-summary.csv", summarize(rows, by_building=True)),
         ("peak-timing-summary.csv", timing),
+        ("exposed-peak-error-summary.csv", exposed),
         ("weather-event-summary.csv", events),
+        *uncertainty.items(),
     ):
         path = output / name
         frame.to_csv(path, index=False)
         outputs[name] = sha(path.read_bytes())
     for name, fig in (
-        ("automatic-annual-errors", error_figure(summary, "annual")),
-        ("automatic-peak-errors", error_figure(summary, "peak")),
-        ("automatic-peak-timing", timing_figure(timing)),
-        ("automatic-weather-events", event_figure(events)),
+        (
+            "automatic-annual-errors",
+            error_figure(
+                uncertainty["relative-annual-error-summary.csv"],
+                "annual",
+                relative=True,
+            ),
+        ),
+        ("automatic-annual-errors-absolute", error_figure(summary, "annual")),
+        ("automatic-peak-errors", error_figure(exposed, "peak")),
+        (
+            "automatic-peak-timing",
+            timing_figure(uncertainty["exposed-peak-timing-uncertainty.csv"]),
+        ),
+        (
+            "automatic-weather-events",
+            event_figure(events, uncertainty["event-temperature-uncertainty.csv"]),
+        ),
     ):
         for extension in ("png", "svg", "pdf"):
             path = output / f"{name}.{extension}"
@@ -436,6 +637,7 @@ def plot(root):
         "created_utc": datetime.now(UTC).isoformat(),
         "analysis_manifest_sha256": sha(raw),
         "plotter_sha256": sha(Path(__file__).read_bytes()),
+        "uncertainty_summary_script_sha256": sha(Path(U.__file__).read_bytes()),
         "method": "automatic",
         "building_responses": len(rows),
         "physical_weather_masks": len(rows[PHYSICAL].drop_duplicates()),
@@ -448,7 +650,7 @@ def plot(root):
                 "event-exposure-comparisons.csv",
             )
         },
-        "interpretation": "Pooled empirical scenario medians/p95. No legacy or forced methods. Six synthetic responses share weather; no population confidence bounds. Separate random/event missingness budgets. Qualified building outcomes only; raw source-qualified weather events independent of engine qualification. Solar components are proxy reference data.",
+        "interpretation": "Annual figure: relative change from reference for seasonal random four-block outages only; positive heating and cooling at least1kWh/m². Absolute annual supplement retained. Peak magnitude/timing figures: positive exposed reference peaks in one-block event-centred outages only. Event figure: unchanged heatwave/cold-spell dates and absolute extreme-temperature errors in uniquely matched episodes only; lost/split episodes excluded from temperature summaries. Timing figure: nearest annual winning peak moves more than24h (descriptive scale, no acceptance criterion). Pooled empirical scenario medians/p95. No legacy or forced methods. Six synthetic responses share weather; no population confidence bounds. Separate random/event missingness budgets. Qualified building outcomes only; raw source-qualified weather events independent of engine qualification. Solar components are proxy reference data.",
         "outputs": outputs,
     }
     (output / "manifest.json").write_text(

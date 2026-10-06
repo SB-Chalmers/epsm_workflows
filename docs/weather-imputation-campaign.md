@@ -1,5 +1,54 @@
 # Swedish weather completion sensitivity campaign
 
+## What the uncertainty report establishes
+
+The [reader report](../output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings/paper.html)
+asks how much completing missing weather changes building results. It compares
+**automatic completion with the same reference AMY**, with buildings held fixed.
+Each headline has a defined missing-data scenario and a measured error scale.
+
+For every tested group with 3- or 12-hour gaps, the empirical 95th-percentile
+annual heating and cooling error is **below 1% of reference demand**. Cooling
+percentages exclude reference demand below 1 kWh/m²; absolute errors retain
+those cases. This supports the consistency of annual-demand results under the
+short outages tested. It does not set a universal acceptable error threshold.
+
+Longer gaps reveal where extra scrutiny is useful. Week-long sunshine gaps in
+all four seasons have a **12.7%** 95th-percentile annual cooling error, compared
+with **3.3%** for gaps in the other required weather readings. Both scenarios
+remove four blocks per year. Extreme-event scenarios remove one block per year
+and should not be interpreted as a matched test of outage placement alone.
+
+The four figure questions are:
+
+- How much does filling missing weather change annual demand?
+- How much does a gap covering an annual peak change its magnitude?
+- How far apart are the reference and reconstructed annual peak hours?
+- Does weather completion preserve heatwave and cold-spell dates and intensity?
+
+Peak charts focus on positive reference peaks covered by the outage. Including
+unaffected peaks would dilute the relevant uncertainty. A change in the winning
+annual peak hour can mean another event becomes the year's maximum; it does not
+mean a weather event has physically moved by that interval. Exact equality of
+peak hours or temperature is kept separate from the magnitude of the change.
+
+The temperature summaries measure the size of event-intensity changes rather
+than treating any exact mismatch as consequential. After 12-hour gaps, all 13
+exposed heatwave comparisons retain their dates, with a median peak-temperature
+error of 0.8°C and an empirical 95th percentile of 3.4°C. Intensity summaries for
+longer gaps explicitly report lost and split events; those events are not given
+an artificial zero temperature error.
+
+The report expresses uncertainty as observed errors under known synthetic gaps,
+not as national confidence intervals. Building variants share weather records;
+small pre-existing reference gaps remain fixed, and solar references include
+modelled components. Results concern sensible ideal heating/cooling demand and
+hourly mean peaks, rather than measured purchased energy or equipment sizing.
+
+The numerical analysis, all native outputs and the frozen simulation runtime
+remain unchanged during this presentation revision. The previous text and
+figures are retained under `analysis-reviewed-warnings/publication-archives`.
+
 ## Revised analysis: retained transient warnings, 6 October 2026
 
 The current [paper, methods and four summary plots](../output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings/paper.html)
@@ -50,7 +99,7 @@ TZ=UTC0 MPLCONFIGDIR=/private/tmp/weather-campaign-mpl ../epsm_core/.venv/bin/py
   output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings
 ```
 
-Validation: **406 weather-study tests passed**; changed Python files pass Ruff.
+Validation: **427 weather-study tests passed**; changed Python files pass Ruff.
 The analysis policy changes outside the frozen simulation runtime. The original
 14 drivers and 77 pinned package files remain unchanged.
 

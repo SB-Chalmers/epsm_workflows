@@ -1,5 +1,17 @@
 # AMY completion sensitivity experiment
 
+## Read the uncertainty results
+
+The [current reader report](../../output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings/paper.html)
+shows the size of the error introduced by automatic completion, with plain-language
+figures for annual demand, exposed peak loads, peak-hour differences and weather
+events. Tested 3- and 12-hour gaps have annual-demand 95th-percentile errors below
+1%; week-long sunshine gaps produce larger cooling uncertainty. Near-zero cooling
+references are excluded from percentage summaries and retained in absolute errors.
+See the [campaign note](../../docs/weather-imputation-campaign.md) for denominators,
+limitations and reproducible postprocessing. Earlier presentation artifacts remain
+archived; the weather and building simulations have not been changed.
+
 ## Current expanded analysis, 6 October 2026
 
 The revised [paper and four current-only summary plots](../../output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings/paper.html)
@@ -9,7 +21,7 @@ regions**, with all 102 reference combinations available. Kiruna 2018 remains
 source-unavailable. The [campaign note](../../docs/weather-imputation-campaign.md)
 explains the bounded warning policy, Core's original annual-heating scope,
 additional hourly sensible-load reconciliation and current reproduction commands.
-No simulations or frozen inputs were changed. **406 weather-study tests pass.**
+No simulations or frozen inputs were changed. **427 weather-study tests pass.**
 
 The historical experiment and initial expanded warning-exclusion analysis below
 are preserved for provenance. Their 12 weather-year / 2,916 automatic-comparison
