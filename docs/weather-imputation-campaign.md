@@ -1,5 +1,67 @@
 # Swedish weather completion sensitivity campaign
 
+## Revised analysis: retained transient warnings, 6 October 2026
+
+The current [paper, methods and four summary plots](../output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings/paper.html)
+retain the bounded transient psychrometric warnings already reviewed by EPSM
+Core. The earlier blanket exclusion was unnecessarily conservative for this
+study. No EnergyPlus simulations, weather inputs, building models or original
+Core diagnostics were changed.
+
+The revised analysis retains all **18,366 labelled outcomes from 9,450 unique
+annual runs**, including **2,742 runs with accepted transient warnings**. There
+are **102 reference building combinations across 17 weather-years in all six
+regions**. Kiruna 2018 remains unavailable because its source weather fails the
+original coverage criteria. The automatic-versus-reference subset contains
+**4,146 building comparisons across 691 physical outage masks**: 2,058
+meteorological and 2,088 solar responses. Six profiles share each weather mask.
+
+Retention is limited to approved EnergyPlus 24.2 psychrometric exceptions with
+Core's recorded review evidence, bounded occurrence counts and no humidity
+control. Additional checks authenticate each retained hourly archive, require
+complete finite nonnegative sensible loads, and reconcile annual totals, peaks
+and all tied peak hours with the original sensible-load receipts. Other warnings,
+severe/fatal errors, pending reviews and incomplete runs remain excluded. All
+2,742 reviewed-warning runs pass these checks; no additional runs are excluded.
+
+Core's original exception remains scoped to annual heating. Retaining sensible
+cooling and peak results is a **descriptive study policy**, following the user's
+prior assessment and these consistency checks; it does not rewrite Core receipts
+or independently establish zero warning impact on every metric. Core total
+cooling includes latent load, so the checks use the study's sensible cooling
+receipt rather than compare different physical quantities.
+
+The [revised analysis manifest](../output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings/manifest.json),
+[diagnostic review](../output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings/diagnostics-qualification.json),
+[figure receipt](../output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings/summary-figures/manifest.json)
+and [paper receipt](../output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings/paper-receipt.json)
+record the revised evidence. Copyable [methods and results](../output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings/paper-methods-results.txt)
+and PNG/SVG/PDF exports accompany the HTML.
+
+Reproduce this postprocessing without running EnergyPlus:
+
+```sh
+TZ=UTC0 PYTHONDONTWRITEBYTECODE=1 ../epsm_core/.venv/bin/python -m examples.analyze_weather_imputation_campaign \
+  output/weather-imputation-campaign-2026-10-05-v5 \
+  --output output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings
+TZ=UTC0 MPLCONFIGDIR=/private/tmp/weather-campaign-mpl ../epsm_core/.venv/bin/python -m examples.plot_weather_campaign_summary \
+  output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings
+TZ=UTC0 MPLCONFIGDIR=/private/tmp/weather-campaign-mpl ../epsm_core/.venv/bin/python -m examples.report_weather_campaign_paper \
+  output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings
+```
+
+Validation: **406 weather-study tests passed**; changed Python files pass Ruff.
+The analysis policy changes outside the frozen simulation runtime. The original
+14 drivers and 77 pinned package files remain unchanged.
+
+## Archived initial warning-exclusion analysis
+
+The following note and its linked original outputs record the earlier analysis
+at commit `851b184`. Its 12 weather-years and 2,916 automatic comparisons are
+**superseded by the revised analysis above**. Its original receipts and qualifier
+source snapshot are preserved for provenance; replay that archived publication
+with its original code version, rather than the updated qualification helper.
+
 The **v5 campaign execution and numerical analysis are complete**. The design
 requested six Swedish geographical strata × three actual years × six synthetic
 building profiles. Seventeen of the 18 requested site-years supplied eligible

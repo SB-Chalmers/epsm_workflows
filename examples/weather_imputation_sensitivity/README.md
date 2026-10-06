@@ -1,5 +1,20 @@
 # AMY completion sensitivity experiment
 
+## Current expanded analysis, 6 October 2026
+
+The revised [paper and four current-only summary plots](../../output/weather-imputation-campaign-2026-10-05-v5/analysis-reviewed-warnings/paper.html)
+retain accepted transient psychrometric warnings. It includes **4,146 paired
+building comparisons / 691 outage masks / 17 reference weather-years / six
+regions**, with all 102 reference combinations available. Kiruna 2018 remains
+source-unavailable. The [campaign note](../../docs/weather-imputation-campaign.md)
+explains the bounded warning policy, Core's original annual-heating scope,
+additional hourly sensible-load reconciliation and current reproduction commands.
+No simulations or frozen inputs were changed. **406 weather-study tests pass.**
+
+The historical experiment and initial expanded warning-exclusion analysis below
+are preserved for provenance. Their 12 weather-year / 2,916 automatic-comparison
+counts are superseded for the current paper.
+
 This standalone experiment uses **EPSM Core** to construct and compile a fixed
 100 m², one-zone building, then runs EnergyPlus 24.2 against controlled variants
 of a complete Gothenburg 2023 AMY. It calls the installed `smhi2epw` temporal,

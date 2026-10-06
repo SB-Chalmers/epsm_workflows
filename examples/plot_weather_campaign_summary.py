@@ -268,7 +268,7 @@ def error_figure(summary, quantity):
     fig.text(
         0.5,
         0.025,
-        "R/E: building responses for random/event outages; 6 synthetic profiles share each weather record.\nRandom: 4 blocks/file; events: 1 block/file. Curves describe separate outage designs.\nWarning-free simulations and references only. Percentiles describe tested scenarios, not population uncertainty.",
+        "R/E: building responses for random/event outages; 6 synthetic profiles share each weather record.\nRandom: 4 blocks/file; events: 1 block/file. Curves describe separate outage designs.\nAccepted transient warnings retained after hourly-load checks. Percentiles describe tested scenarios, not population uncertainty.",
         ha="center",
         va="bottom",
         fontsize=9,

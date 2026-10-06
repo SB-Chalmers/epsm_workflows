@@ -1,23 +1,26 @@
 """Qualify campaign building outcomes from immutable simulation diagnostics.
 
-Every warning excludes every building outcome for that run, even when Core
-accepts a warning for annual heating alone. Weather comparisons and event
-receipts remain usable independently of engine qualification. This helper only
-reads evidence; it never restores archives, edits receipts, or invokes engines.
+Retain bounded psychrometric warnings already reviewed by Core, with additional
+hourly sensible-load reconciliation for this descriptive study. Core's original
+exception remains scoped to annual heating; study retention does not extend that
+accuracy qualification to cooling, humidity or latent loads. Other warnings,
+errors and incomplete runs remain excluded. This helper never invokes engines.
 """
 
 from __future__ import annotations
 
 import gzip
 import hashlib
+import io
 import json
 import re
 from collections import Counter
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
-POLICY = "whole-run-warning-exclusion-1"
+POLICY = "reviewed-psychrometric-sensible-study-1"
 REPOSITORY = Path(__file__).resolve().parents[1]
 BASE_KEYS = ["site_id", "year", "building_id"]
 QUALIFICATION_COLUMNS = [
@@ -124,6 +127,120 @@ def _model(path, inputs, cache):
     return cache[identity]
 
 
+def _known_review(diagnostics, model):
+    """Accept only the bounded 24.2 warning review recorded by the frozen Core."""
+    review = diagnostics.get("warning_review", {})
+    version = "psychrometric-annual-heating-1"
+    required = {
+        "engine_completed_successfully",
+        "full_calendar_validated",
+        "hourly_annual_energy_reconciled",
+        "engine_geometry_reconciled",
+        "finite_hourly_outputs",
+        "zone_temperature_domain_checked",
+    }
+    if (
+        diagnostics.get("engine_version") != "24.2"
+        or diagnostics.get("disposition") != "accepted_with_warnings"
+        or review.get("version") != version
+        or review.get("scope") != "annual_space_heating_demand"
+        or not required.issubset(review.get("evidence", []))
+        or diagnostics.get("geometry_totals") != "engine_area_volume_reconciled"
+    ):
+        return False
+    systems = model.get("ZoneHVAC:IdealLoadsAirSystem", {})
+    if not systems or any(
+        str(system.get(key, "")).lower() != "none"
+        for system in systems.values()
+        for key in ("humidification_control_type", "dehumidification_control_type")
+    ):
+        return False
+    totals = {
+        "wetbulb_iteration_temperature": 0,
+        "near_freezing_wetbulb_iteration_limit": 0,
+    }
+    warnings = [m for m in diagnostics["messages"] if m.get("severity") == "warning"]
+    if not warnings:
+        return False
+    for message in warnings:
+        rule = message.get("exception_rule", {})
+        kind = rule.get("identifier")
+        count = message.get("occurrence_count")
+        if (
+            not message.get("approved")
+            or rule.get("version") != version
+            or rule.get("engine_version") != "24.2"
+            or rule.get("scope") != "annual_space_heating_demand"
+            or kind not in totals
+            or isinstance(count, bool)
+            or not isinstance(count, int)
+            or count < 1
+            or "Environment=ANNUAL" not in message.get("original_text", "")
+        ):
+            return False
+        totals[kind] += count
+    return (
+        totals["wetbulb_iteration_temperature"] <= 5
+        and totals["near_freezing_wetbulb_iteration_limit"] <= 1
+    )
+
+
+def _review_hourly(folder, receipt, result, inputs):
+    """Authenticate finite annual hourly sensible loads and reconcile totals/peaks.
+
+    This checks retained numeric evidence, not latent/cooling accuracy or the
+    counterfactual size of a warning's effect. Original Core receipts are intact.
+    """
+    archive = _json(folder / "hourly-archive.json", inputs)
+    raw = _read(folder / "hourly-loads.csv.gz", inputs)
+    decoded = gzip.decompress(raw)
+    if (
+        archive["gzip_sha256"] != fingerprint(raw)
+        or archive["uncompressed_sha256"] != fingerprint(decoded)
+        or archive["core_run_id"] != receipt["core_run_id"]
+        or archive["model_sha256"] != receipt["model_sha256"]
+    ):
+        raise ValueError("Reviewed warning hourly archive differs from its receipt")
+    hourly = pd.read_csv(io.BytesIO(decoded))
+    year = int(receipt["year"])
+    expected = pd.date_range(
+        f"{year}-01-01T01:00:00+01:00", f"{year + 1}-01-01T00:00:00+01:00", freq="h"
+    )
+    stamps = pd.to_datetime(hourly.lst_hour_ending, utc=True)
+    if len(hourly) != len(expected) or not np.array_equal(
+        stamps.astype("int64"), expected.tz_convert("UTC").astype("int64")
+    ):
+        raise ValueError("Reviewed warning hourly calendar is incomplete or reordered")
+    # Core's cooling scalar includes total load; this study measures sensible
+    # supply-air loads. Reconcile like-for-like quantities in the study receipt.
+    metrics = receipt["metrics"]
+    for mode in ("heating", "cooling"):
+        values = pd.to_numeric(hourly[mode + "_kw"], errors="coerce").to_numpy()
+        if not np.isfinite(values).all() or np.any(values < 0):
+            raise ValueError(
+                "Reviewed warning sensible loads must be finite and nonnegative"
+            )
+        for actual, stored in (
+            (values.sum(), metrics[f"annual_{mode}_kwh"]),
+            (values.max(), metrics[f"peak_{mode}_kw"]),
+        ):
+            if not np.isfinite(stored) or not np.isclose(
+                actual, stored, rtol=1e-9, atol=1e-7
+            ):
+                raise ValueError(
+                    "Reviewed warning hourly totals or peaks differ from sensible-load receipts"
+                )
+        peak_mask = np.isclose(values, values.max(), rtol=1e-9, atol=1e-9)
+        if (
+            hourly.loc[peak_mask, "lst_hour_ending"].tolist()
+            != metrics[f"peak_{mode}_hours_lst"]
+        ):
+            raise ValueError(
+                "Reviewed warning hourly peak-hour sets differ from their receipt"
+            )
+    return fingerprint(raw)
+
+
 def _assess(folder, imported, inputs, weather_cache, model_cache):
     """Validate one canonical simulation and conservatively qualify its whole output."""
     receipt_path = folder / "receipt.json"
@@ -201,8 +318,23 @@ def _assess(folder, imported, inputs, weather_cache, model_cache):
         m.get("severity") in ("warning", "severe", "fatal") for m in messages
     ) != any(counts.values()):
         raise ValueError("Core diagnostic messages and severity counts disagree")
+    known_warning = False
+    if counts["core_warning_count"] and not any(
+        counts[k]
+        for k in (
+            "core_severe_count",
+            "core_fatal_count",
+            "raw_severe_count",
+            "raw_fatal_count",
+        )
+    ):
+        model = _json(folder / "model.epJSON", inputs)
+        known_warning = _known_review(diagnostics, model)
+    hourly_sha = (
+        _review_hourly(folder, receipt, result, inputs) if known_warning else None
+    )
     reasons = []
-    if any(counts.values()):
+    if any(counts.values()) and not known_warning:
         reasons.append("engine_diagnostic_warning_or_error")
     if not diagnostics["accepted"]:
         reasons.append("core_diagnostics_not_accepted")
@@ -210,7 +342,7 @@ def _assess(folder, imported, inputs, weather_cache, model_cache):
         "context_cap_review_pending"
     ):
         reasons.append("core_diagnostic_review_pending")
-    if diagnostics.get("disposition") not in (None, "accepted"):
+    if diagnostics.get("disposition") not in (None, "accepted") and not known_warning:
         reasons.append("core_disposition_not_unconditionally_accepted")
     if "EnergyPlus Completed Successfully" not in err:
         reasons.append("engine_success_not_recorded")
@@ -227,6 +359,8 @@ def _assess(folder, imported, inputs, weather_cache, model_cache):
         "core_run_id": receipt["core_run_id"],
         "calendar_year": receipt["year"],
         "core_disposition": diagnostics.get("disposition"),
+        "reviewed_psychrometric_warning_retained": known_warning,
+        "reviewed_hourly_archive_sha256": hourly_sha,
         "warning_exception_scopes": sorted(
             {
                 m["exception_rule"]["scope"]
@@ -367,7 +501,7 @@ def qualify_results(root, rows, inputs=None):
         ),
         "records": records,
         "inputs": dict(inputs),
-        "interpretation": "Every warning excludes all building outcomes, including annual heating accepted under scoped Core exceptions. Unqualified reference runs exclude every related profile/site-year comparison. Aliases inherit canonical run qualification. Weather availability and anomaly evidence remain independent.",
+        "interpretation": "Retain bounded Core-reviewed psychrometric warnings after authenticating complete finite nonnegative hourly sensible heating/cooling and reconciling annual totals and peaks. Core's existing exception qualifies annual heating only; retaining cooling and peak outputs is a user-directed descriptive-study policy, not a new Core accuracy qualification. Other warnings/errors, pending review and incomplete engines are excluded. Unqualified references exclude related comparisons; original diagnostics remain unchanged.",
     }
     enclosing_inputs.update(inputs)
     return selected, exclusions, metadata

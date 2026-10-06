@@ -6,6 +6,7 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -192,6 +193,174 @@ def revise_diagnostics(folder, change):
     revise_json(
         folder / "result.json", lambda result: result.update(diagnostics=document)
     )
+
+
+def reviewed_warning_campaign(tmp_path):
+    """Supply a genuine reviewed warning plus complete sensible-load evidence."""
+    root, rows, folders = make_campaign(tmp_path, candidate_warning=True)
+    model = {
+        "ZoneHVAC:IdealLoadsAirSystem": {
+            "fixture": {
+                "humidification_control_type": "None",
+                "dehumidification_control_type": "None",
+            }
+        }
+    }
+    for folder in folders.values():
+        write_json(folder / "model.epJSON", model)
+        model_sha = sha((folder / "model.epJSON").read_bytes())
+        revise_json(folder / "receipt.json", lambda d, model_sha=model_sha: d.update(model_sha256=model_sha))
+    rows["compiled_model_sha256"] = model_sha
+    folder = folders[CANDIDATE]
+    review = {
+        "version": "psychrometric-annual-heating-1",
+        "scope": "annual_space_heating_demand",
+        "evidence": [
+            "engine_completed_successfully",
+            "full_calendar_validated",
+            "hourly_annual_energy_reconciled",
+            "engine_geometry_reconciled",
+            "finite_hourly_outputs",
+            "zone_temperature_domain_checked",
+        ],
+    }
+
+    def approve(d):
+        d.update(warning_review=review, geometry_totals="engine_area_volume_reconciled")
+        d["messages"][0].update(
+            occurrence_count=1,
+            original_text="Routine=PsyTwbFnTdbWPb, Environment=ANNUAL",
+        )
+        d["messages"][0]["exception_rule"].update(
+            identifier="wetbulb_iteration_temperature",
+            version=review["version"],
+            engine_version="24.2",
+        )
+
+    revise_diagnostics(folder, approve)
+    stamps = pd.date_range("2023-01-01T01:00:00+01:00", periods=8760, freq="h")
+    hourly = pd.DataFrame(
+        {
+            "lst_hour_ending": [s.isoformat() for s in stamps],
+            "heating_kw": 1.0,
+            "cooling_kw": 0.5,
+        }
+    )
+    hourly.loc[0, ["heating_kw", "cooling_kw"]] = [2.0, 0.75]
+    decoded = hourly.to_csv(index=False).encode()
+    raw = gzip.compress(decoded, mtime=0)
+    (folder / "hourly-loads.csv.gz").write_bytes(raw)
+    receipt = json.loads((folder / "receipt.json").read_text())
+    metrics = {}
+    for mode in ("heating", "cooling"):
+        metrics["annual_" + mode + "_kwh"] = float(hourly[mode + "_kw"].sum())
+        metrics["peak_" + mode + "_kw"] = float(hourly[mode + "_kw"].max())
+        metrics["peak_" + mode + "_hours_lst"] = [stamps[0].isoformat()]
+    revise_json(folder / "receipt.json", lambda d: d.update(metrics=metrics))
+    write_json(
+        folder / "hourly-archive.json",
+        {
+            "gzip_sha256": sha(raw),
+            "uncompressed_sha256": sha(decoded),
+            "core_run_id": receipt["core_run_id"],
+            "model_sha256": model_sha,
+        },
+    )
+    return root, rows, folders
+
+
+def test_reviewed_transient_warning_retains_aliases_and_original_scope(tmp_path):
+    root, rows, folders = reviewed_warning_campaign(tmp_path)
+    before = (folders[CANDIDATE] / "diagnostics.json").read_bytes()
+    annotated, excluded, metadata = Q.qualify_results(root, rows)
+    assert excluded.empty
+    assert annotated.engine_outcome_qualified.all()
+    assert metadata["qualified_simulations"] == 2
+    record = next(r for r in metadata["records"] if r["core_warning_count"])
+    assert record["reviewed_psychrometric_warning_retained"]
+    assert record["warning_exception_scopes"] == ["annual_space_heating_demand"]
+    assert (folders[CANDIDATE] / "diagnostics.json").read_bytes() == before
+    assert str(folders[CANDIDATE] / "hourly-loads.csv.gz") in metadata["inputs"]
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "unknown_rule",
+        "over_limit",
+        "unapproved",
+        "missing_evidence",
+        "humidity_control",
+    ],
+)
+def test_warning_retention_is_bounded_and_does_not_accept_unknown_cases(
+    tmp_path, defect
+):
+    root, rows, folders = reviewed_warning_campaign(tmp_path)
+    folder = folders[CANDIDATE]
+
+    def damage(d):
+        m = d["messages"][0]
+        if defect == "unknown_rule":
+            m["exception_rule"]["identifier"] = "unrelated_warning"
+        elif defect == "over_limit":
+            m["occurrence_count"] = 6
+        elif defect == "unapproved":
+            m["approved"] = False
+        else:
+            d["warning_review"]["evidence"] = []
+
+    if defect == "humidity_control":
+        for p in folders.values():
+            m = json.loads((p / "model.epJSON").read_text())
+            m["ZoneHVAC:IdealLoadsAirSystem"]["fixture"][
+                "dehumidification_control_type"
+            ] = "Humidistat"
+            write_json(p / "model.epJSON", m)
+            model_sha = sha((p / "model.epJSON").read_bytes())
+            revise_json(p / "receipt.json", lambda d, model_sha=model_sha: d.update(model_sha256=model_sha))
+        rows["compiled_model_sha256"] = model_sha
+    else:
+        revise_diagnostics(folder, damage)
+    _, excluded, _ = Q.qualify_results(root, rows)
+    assert set(excluded.case_id) == {CANDIDATE, ALIAS}
+
+
+@pytest.mark.parametrize(
+    "defect", ["hash", "nonfinite", "calendar", "annual", "peak_hours"]
+)
+def test_retained_warning_requires_authentic_complete_reconciled_hourly_loads(
+    tmp_path, defect
+):
+    root, rows, folders = reviewed_warning_campaign(tmp_path)
+    folder = folders[CANDIDATE]
+    if defect in ("annual", "peak_hours"):
+        field = "annual_cooling_kwh" if defect == "annual" else "peak_cooling_hours_lst"
+        revise_json(
+            folder / "receipt.json",
+            lambda d: d["metrics"].update({field: 9000 if defect == "annual" else []}),
+        )
+    else:
+        path = folder / "hourly-loads.csv.gz"
+        hourly = pd.read_csv(path)
+        if defect == "nonfinite":
+            hourly.loc[0, "cooling_kw"] = np.nan
+        elif defect == "calendar":
+            hourly = hourly.iloc[::-1]
+        else:
+            hourly.loc[1, "cooling_kw"] = 0.75
+        decoded = hourly.to_csv(index=False).encode()
+        raw = gzip.compress(decoded, mtime=0)
+        path.write_bytes(raw)
+        if defect != "hash":
+            revise_json(
+                folder / "hourly-archive.json",
+                lambda d: d.update(
+                    gzip_sha256=sha(raw), uncompressed_sha256=sha(decoded)
+                ),
+            )
+    with pytest.raises(ValueError):
+        Q.qualify_results(root, rows)
 
 
 def test_clean_local_evidence_qualifies_aliases_and_captures_consumed_bytes(tmp_path):
