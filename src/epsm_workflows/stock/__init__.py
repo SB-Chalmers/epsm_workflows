@@ -1,1 +1,1 @@
-"""Evidence-led national stock analysis with sealed property holdouts."""
+"""Historical study compatibility namespace; maintained in epsm_studies."""

@@ -1,6 +1,8 @@
-"""Compatibility entrypoint for the unified workflow CLI."""
-
-from ..cli import main
-
+"""Compatibility import for a historical study now owned by epsm_studies."""
+from epsm_workflows._historical import load as _load
+_historical_module = _load('epsm_studies.legacy_workflows.surrogate.__main__')
 if __name__ == "__main__":
-    raise SystemExit(main())
+    _historical_module.main()
+else:
+    import sys as _sys
+    _sys.modules[__name__] = _historical_module

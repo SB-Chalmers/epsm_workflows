@@ -1,1 +1,1 @@
-"""Reproducible simulation datasets. No model training or data splitting."""
+"""Historical study compatibility namespace; maintained in epsm_studies."""

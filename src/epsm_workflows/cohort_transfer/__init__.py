@@ -1,1 +1,1 @@
-"""Retrospective, property-separated physical archetype transfer experiments."""
+"""Historical study compatibility namespace; maintained in epsm_studies."""

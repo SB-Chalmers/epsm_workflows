@@ -1,1 +1,1 @@
-"""Development-only evidence and physical-subgroup diagnostics."""
+"""Historical study compatibility namespace; maintained in epsm_studies."""

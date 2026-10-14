@@ -234,7 +234,8 @@ def test_submit_rejects_missing_preflight_before_scheduler(tmp_path):
 
 
 def test_vera_launcher_gates_pilot_behind_preflight_stage():
-    launcher = Path(campaign.__file__).parents[2] / "campaigns/vera.sh"
+    # Historical source now lives in epsm_studies; the launcher remains here.
+    launcher = Path(__file__).parents[1] / "campaigns/vera.sh"
     source = launcher.read_text()
     start_stage = source.split("    preflight)", 1)[0]
     preflight_stage = source.split("    preflight)", 1)[1].split("    production)", 1)[0]
