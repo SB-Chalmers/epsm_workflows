@@ -8,11 +8,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 import json
+import os
 import re
 import shlex
 import subprocess
+from tempfile import TemporaryDirectory
 
-from .records import atomic_json, read_json
+from .records import atomic_json, exclusive_lock, read_json
 
 
 def _array(indices):
@@ -124,13 +126,114 @@ class VeraExecutor:
         return receipt
 
     def retrieve(self, directory):
-        """Merge remote result/attempt records locally without deleting local files."""
+        """Validate remote evidence, then merge while preserving successful cases.
+
+        Inputs must match the local plan. Every remote attempt is retained, but
+        an existing local success remains the selected result. A remote success
+        replaces a local failure; otherwise the later failed attempt is selected.
+        Conflicting immutable attempt/artifact files are rejected before merging.
+        Transfers use a temporary directory, so invalid downloads cannot replace
+        local evidence. Remote paths recorded inside results remain unchanged.
+        """
+        from .execution import _manifest, _read_attempt, _read_result, _write_record, status
+
         root = Path(directory).resolve()
-        for name in ("results", "attempts", "artifacts"):
-            (root / name).mkdir(parents=True, exist_ok=True)
+        manifest = _manifest(root)
+        with exclusive_lock(root / ".retrieve.lock"), TemporaryDirectory(
+            prefix=".retrieve-", dir=root
+        ) as temporary:
+            incoming = Path(temporary)
             self._run(["rsync", "--archive", "--protect-args",
-                       f"{self.host}:{self.remote_directory}/{name}/", str(root / name) + "/"])
-        from .execution import status
+                       f"{self.host}:{self.remote_directory}/manifest.json",
+                       str(incoming / "manifest.json")])
+            if _manifest(incoming) != manifest:
+                raise ValueError("Remote plan differs from local prepared evaluations")
+            for name in ("results", "attempts", "artifacts"):
+                (incoming / name).mkdir()
+                self._run(["rsync", "--archive", "--protect-args",
+                           f"{self.host}:{self.remote_directory}/{name}/",
+                           str(incoming / name) + "/"])
+
+            # Verify every record and collision before publishing any evidence.
+            attempts = {}
+            for path in (incoming / "attempts").rglob("*"):
+                if path.is_dir():
+                    continue
+                relative = path.relative_to(incoming / "attempts")
+                if (len(relative.parts) != 2 or not re.fullmatch(r"[0-9]{6}", relative.parts[0])
+                        or not re.fullmatch(r"[a-f0-9]{32}\.json", relative.parts[1])):
+                    raise ValueError(f"Unexpected remote attempt path: {relative}")
+                index = int(relative.parts[0])
+                if not 0 <= index < len(manifest["case_ids"]):
+                    raise ValueError("Remote attempt index is outside the prepared plan")
+                attempt = _read_attempt(path, manifest, index)
+                if attempt["id"] != path.stem:
+                    raise ValueError("Remote attempt filename differs from its identity")
+                attempts[(index, path.stem)] = attempt
+            results = {}
+            for path in (incoming / "results").iterdir():
+                if not re.fullmatch(r"[0-9]{6}\.json", path.name):
+                    raise ValueError(f"Unexpected remote result path: {path.name}")
+                index = int(path.stem)
+                if not 0 <= index < len(manifest["case_ids"]):
+                    raise ValueError("Remote result index is outside the prepared plan")
+                result = _read_result(path, manifest, index)
+                if attempts.get((index, result["id"])) != result:
+                    raise ValueError("Remote result has no matching retained attempt")
+                results[index] = result
+
+            files = [path for name in ("attempts", "artifacts")
+                     for path in (incoming / name).rglob("*") if not path.is_dir()]
+            for path in files:
+                if path.is_symlink() or not path.resolve().is_relative_to(incoming):
+                    raise ValueError("Retrieved files must stay inside the transferred evidence")
+                target = root / path.relative_to(incoming)
+                if target.exists() and target.read_bytes() != path.read_bytes():
+                    # Interrupted attempts may advance to completion remotely.
+                    # Keep the original observed running record alongside it.
+                    if path.parts[-3] == "attempts":
+                        index = int(path.parent.name)
+                        prior = _read_attempt(target, manifest, index)
+                        updated = attempts[(index, path.stem)]
+                        if (prior["status"] == "running" and updated["status"] != "running"
+                                and all(updated.get(key) == value for key, value in prior.items()
+                                        if key != "status")):
+                            continue
+                    raise ValueError(f"Conflicting retrieved evidence: {path.relative_to(incoming)}")
+            for index in results:
+                path = root / "results" / f"{index:06d}.json"
+                if path.exists():
+                    _read_result(path, manifest, index)
+
+            for path in files:
+                target = root / path.relative_to(incoming)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    # Same-filesystem no-overwrite publication preserves any
+                    # evidence concurrently written by a local worker.
+                    os.link(path, target)
+                except FileExistsError:
+                    if target.read_bytes() == path.read_bytes():
+                        continue
+                    index = int(path.parent.name) if path.parts[-3] == "attempts" else None
+                    if index is not None:
+                        prior = _read_attempt(target, manifest, index)
+                        updated = attempts[(index, path.stem)]
+                        if prior["status"] == "running" and updated["status"] != "running":
+                            history = root / "attempt_observations" / path.parent.name / path.name
+                            _write_record(history, prior)
+                            _write_record(target, updated)
+                            continue
+                    raise ValueError(f"Conflicting retrieved evidence: {path.relative_to(incoming)}")
+            for index, result in results.items():
+                with exclusive_lock(root / "locks" / f"{index:06d}.lock"):
+                    path = root / "results" / f"{index:06d}.json"
+                    previous = _read_result(path, manifest, index) if path.exists() else None
+                    if previous is None or (previous["status"] != "succeeded" and (
+                        result["status"] == "succeeded"
+                        or result.get("finished_at", "") > previous.get("finished_at", "")
+                    )):
+                        _write_record(path, result)
         return status(root)
 
     def status(self, job_id):

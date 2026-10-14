@@ -211,3 +211,97 @@ def test_partial_dict_assessment_never_enters_pareto():
                              "lca": {"total_gwp_kgco2e": 0, "status": "incomplete"}})
     assert not tree.pareto
     assert tree.nodes[0].reasons == ("incomplete evaluation",)
+
+
+def _local_transport(args, **kwargs):
+    """Exercise retrieval file merging without requiring an SSH account."""
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    source = Path(args[-2].split(":", 1)[1])
+    target = Path(args[-1])
+    if source.is_dir():
+        shutil.copytree(source, target, dirs_exist_ok=True)
+    else:
+        shutil.copyfile(source, target)
+    return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+
+def test_vera_retrieval_keeps_local_success_and_every_attempt(tmp_path, monkeypatch):
+    import shutil
+    from epsm_workflows import PreparedEvaluation, prepare, read_results, run_local, VeraExecutor
+
+    local, remote = tmp_path / "local", tmp_path / "remote"
+    prepare(local, [PreparedEvaluation({"x": 2})], handler="builtins:dict")
+    shutil.copytree(local, remote)
+    monkeypatch.setattr("epsm_workflows.execution._handler", lambda _: lambda payload: {"answer": 4})
+    run_local(local)
+    original = read_results(local)[0]
+
+    def fail(payload):
+        raise ValueError("remote temporary failure")
+
+    monkeypatch.setattr("epsm_workflows.execution._handler", lambda _: fail)
+    run_local(remote)
+    (remote / "artifacts" / "remote.log").write_text("retained remote diagnostics")
+    vera = VeraExecutor("test-host", str(remote), command=_local_transport)
+    assert vera.retrieve(local)["succeeded"] == 1
+    assert read_results(local)[0] == original
+    assert len(list((local / "attempts").glob("*/*.json"))) == 2
+    assert (local / "artifacts" / "remote.log").read_text() == "retained remote diagnostics"
+    # Repeated retrieval does not duplicate attempts or replace the success.
+    vera.retrieve(local)
+    assert read_results(local)[0] == original
+
+
+def test_vera_retrieval_validates_before_changing_local_evidence(tmp_path, monkeypatch):
+    import json
+    import shutil
+    from epsm_workflows import PreparedEvaluation, prepare, read_results, run_local, VeraExecutor
+
+    local, remote = tmp_path / "local", tmp_path / "remote"
+    prepare(local, [PreparedEvaluation({"x": 2})], handler="builtins:dict")
+    shutil.copytree(local, remote)
+    monkeypatch.setattr("epsm_workflows.execution._handler", lambda _: lambda payload: {"answer": 4})
+    run_local(local)
+    run_local(remote)
+    original = (local / "results/000000.json").read_bytes()
+    path = remote / "results/000000.json"
+    value = json.loads(path.read_text())
+    value["result"] = {"answer": 0}
+    path.write_text(json.dumps(value))
+    vera = VeraExecutor("test-host", str(remote), command=_local_transport)
+    with pytest.raises(ValueError, match="changed or is incomplete"):
+        vera.retrieve(local)
+    assert (local / "results/000000.json").read_bytes() == original
+    assert len(list((local / "attempts").glob("*/*.json"))) == 1
+    # A valid remote plan for different inputs is also rejected before merging.
+    other = tmp_path / "other"
+    prepare(other, [PreparedEvaluation({"x": 3})], handler="builtins:dict")
+    vera.remote_directory = str(other)
+    with pytest.raises(ValueError, match="Remote plan differs"):
+        vera.retrieve(local)
+    assert read_results(local)[0]["result"] == {"answer": 4}
+
+
+def test_vera_retrieval_accepts_remote_recovery_without_losing_failure(tmp_path, monkeypatch):
+    import shutil
+    from epsm_workflows import PreparedEvaluation, prepare, read_results, run_local, VeraExecutor
+
+    local, remote = tmp_path / "local", tmp_path / "remote"
+    prepare(local, [PreparedEvaluation({"x": 2})], handler="builtins:dict")
+    shutil.copytree(local, remote)
+
+    def fail(payload):
+        raise ValueError("local temporary failure")
+
+    monkeypatch.setattr("epsm_workflows.execution._handler", lambda _: fail)
+    run_local(local)
+    monkeypatch.setattr("epsm_workflows.execution._handler", lambda _: lambda payload: {"answer": 4})
+    run_local(remote)
+    vera = VeraExecutor("test-host", str(remote), command=_local_transport)
+    assert vera.retrieve(local)["succeeded"] == 1
+    assert read_results(local)[0]["result"] == {"answer": 4}
+    assert len(list((local / "attempts").glob("*/*.json"))) == 2
+

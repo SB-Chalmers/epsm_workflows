@@ -137,7 +137,8 @@ def _write_record(path, value):
     atomic_json(path, {**value, "record_sha256": digest(value)})
 
 
-def _read_result(path, manifest, index):
+def _read_attempt(path, manifest, index, *, completed=False):
+    """Authenticate a retained attempt against its prepared inputs."""
     value = read_json(path)
     checksum = value.pop("record_sha256", None)
     if checksum != digest(value):
@@ -146,11 +147,16 @@ def _read_result(path, manifest, index):
             or value.get("case_id") != manifest["case_ids"][index]
             or value.get("index") != index):
         raise ValueError("Stored result belongs to different prepared inputs")
-    if value.get("status") not in {"succeeded", "failed"}:
+    allowed = {"succeeded", "failed"} if completed else {"running", "succeeded", "failed"}
+    if value.get("status") not in allowed:
         raise ValueError("Stored result is not a completed attempt")
     if value["status"] == "succeeded" and "result" not in value:
         raise ValueError("Successful attempt has no result")
     return value
+
+
+def _read_result(path, manifest, index):
+    return _read_attempt(path, manifest, index, completed=True)
 
 
 def validate_plan(directory):

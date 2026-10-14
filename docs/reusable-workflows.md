@@ -84,7 +84,11 @@ Workers lock individual cases.
 
 `VeraExecutor.stage` transfers immutable inputs/assets and rejects an incompatible
 remote plan. `submit` reads remote completion and submits unfinished Slurm indices.
-`retrieve` merges attempts, results and artifacts without deleting local files.
+`retrieve` downloads into a temporary directory and verifies the remote plan and
+attempt/result checksums before merging. A local success stays selected even when
+the remote attempt failed. A remote success can replace a local failure; all attempt
+records are retained. Conflicting artifact files are rejected instead of overwritten.
+Paths saved inside remote results continue to identify their original remote location.
 The remote Python environment must contain the pinned packages and engine. Offline
 tests verify commands, quoting, input transport and resume; they are not live Vera
 or Slurm execution evidence.
