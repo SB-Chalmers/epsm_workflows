@@ -95,10 +95,15 @@ def _assessment(evaluation, constraints):
     reasons = []
     if e is None:
         reasons.append("missing annual delivered energy objective")
+    elif e < 0:
+        reasons.append("annual delivered energy cannot be negative")
     if c is None:
         reasons.append("missing life-cycle carbon objective")
     if (field(evaluation, "complete") is False or field(energy_object, "complete") is False
-            or field(carbon_object, "complete") is False):
+            or field(carbon_object, "complete") is False
+            or field(energy_object, "requirements") or field(carbon_object, "requirements")
+            or field(carbon_object, "status", "complete") != "complete"
+            or field(energy_object, "diagnostics", {}).get("accepted") is False):
         reasons.append("incomplete evaluation")
     for index, constraint in enumerate(constraints):
         verdict = constraint(evaluation)
@@ -169,6 +174,7 @@ def optimise_renovations(
         if len({m.measure_id for m in bundle}) != len(bundle):
             raise ValueError("A bundle cannot contain the same measure twice")
     options = dict(evaluation_options or {})
+    output_root = options.pop("directory", Path(directory) / "artifacts" if directory else None)
     if evaluator is None:
         # Search owns an independent working baseline; caller edits and results
         # remain separate from branch execution.
@@ -187,13 +193,19 @@ def optimise_renovations(
     identity = digest(config)
     if evaluator is None:
         def evaluator(candidate):
-            return candidate.simulate(engine=engine, weather=weather, cache=cache, **options)
+            run_options = dict(options)
+            if output_root is not None:
+                run_options["directory"] = Path(output_root) / digest(json_value(candidate))
+            return candidate.simulate(engine=engine, weather=weather, cache=cache, **run_options)
 
     def explore():
         checkpoint = Path(directory) / "tree.json" if directory is not None else None
         nodes, rejected = [], []
         if checkpoint and checkpoint.exists():
             stored = read_json(checkpoint)
+            checksum = stored.pop("checksum", None)
+            if checksum != digest(stored):
+                raise ValueError("Search checkpoint content has changed or is incomplete")
             if stored["id"] != identity:
                 raise ValueError("Search configuration differs from the stored tree")
             nodes = [RenovationNode.from_dict(n) for n in stored["nodes"]]
@@ -204,8 +216,8 @@ def optimise_renovations(
 
         def save():
             if checkpoint:
-                atomic_json(checkpoint, {"id": identity, "configuration": config,
-                                        "nodes": nodes, "rejected": rejected})
+                stored = {"id": identity, "configuration": config, "nodes": nodes, "rejected": rejected}
+                atomic_json(checkpoint, {**stored, "checksum": digest(stored)})
 
         def evaluate(candidate, identifier, parent, bundle):
             try:

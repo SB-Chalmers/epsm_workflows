@@ -54,12 +54,14 @@ class VeraExecutor:
     def stage(self, directory):
         """Transfer only immutable inputs; never overwrite remote result/attempt files."""
         root = Path(directory).resolve()
-        manifest = read_json(root / "manifest.json")
+        from .execution import validate_plan
+        manifest = validate_plan(root)
         remote = self.remote_directory
         # Verify a previously staged plan before transferring files. The test is
         # performed remotely so a stale local result directory cannot replace it.
         check = (
-            f"mkdir -p -- {shlex.quote(remote + '/cases')} {shlex.quote(remote + '/logs')}; "
+            "mkdir -p -- " + " ".join(shlex.quote(remote + '/' + name)
+                for name in ("cases", "logs", "results", "attempts", "artifacts")) + "; "
             f"if test -f {shlex.quote(remote + '/manifest.json')}; then "
             f"{shlex.quote(self.python)} -c " + shlex.quote(
                 "import json,sys; p=json.load(open(sys.argv[1])); "

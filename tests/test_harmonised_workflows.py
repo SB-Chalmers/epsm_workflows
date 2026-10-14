@@ -179,3 +179,35 @@ def test_prepared_assets_are_portable_and_checksum_verified(tmp_path):
     copied = next((local / "assets").glob("*/*.epw"))
     copied.write_text("changed")
     assert run_local(local)["failed"] == 1
+
+
+def test_resume_rejects_tampered_results_and_tree(tmp_path):
+    import json
+    from epsm_workflows import PreparedEvaluation, prepare, run_local, optimise_renovations
+    prepared = tmp_path / "prepared"
+    prepare(prepared, [PreparedEvaluation({"x": 2})], handler="test_harmonised_workflows:evaluate_payload")
+    run_local(prepared)
+    path = prepared / "results/000000.json"
+    data = json.loads(path.read_text())
+    del data["result"]
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="changed or is incomplete"):
+        run_local(prepared)
+    options = dict(bundles=[], max_depth=0, evaluator=lambda b: result(b, 20, 30),
+                   evaluator_id="tamper-test", directory=tmp_path / "tree")
+    optimise_renovations(Building(), **options)
+    path = tmp_path / "tree/tree.json"
+    data = json.loads(path.read_text())
+    data["nodes"][0]["carbon_kgco2e"] = 0
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="changed or is incomplete"):
+        optimise_renovations(Building(), **options)
+
+
+def test_partial_dict_assessment_never_enters_pareto():
+    from epsm_workflows import optimise_renovations
+    tree = optimise_renovations(Building(), bundles=[], max_depth=0,
+        evaluator=lambda b: {"energy": {"annual_delivered_energy_kwh": 1},
+                             "lca": {"total_gwp_kgco2e": 0, "status": "incomplete"}})
+    assert not tree.pareto
+    assert tree.nodes[0].reasons == ("incomplete evaluation",)

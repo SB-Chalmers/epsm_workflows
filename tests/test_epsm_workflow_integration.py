@@ -45,3 +45,55 @@ def test_real_building_branch_lineage_resume_and_computed_objectives(tmp_path):
         restored = epsm.Building.from_dict(node.building)
         assert len(restored.stages) == node.depth
         assert len(restored.material_flows) == node.depth
+
+
+def test_real_rc_and_automatic_lca_renovation_tree(tmp_path):
+    pytest.importorskip("epsm_rc")
+    from datetime import datetime, timedelta
+    from epsm import Weather, AssessmentSettings, EnvironmentalFactor
+    from epsm_core import DeliverySpec, HeatingDeliverySpec
+
+    path = tmp_path / "synthetic.epw"
+    headers = ["LOCATION,Test,Test,SWE,SYNTHETIC,0,57,12,1,20", "DESIGN CONDITIONS,0",
+               "TYPICAL/EXTREME PERIODS,0", "GROUND TEMPERATURES,0",
+               "HOLIDAYS/DAYLIGHT SAVINGS,No,0,0,0", "COMMENTS 1,Software test only",
+               "COMMENTS 2,Not measured weather", "DATA PERIODS,1,1,Data,Sunday,1/1,12/31"]
+    with path.open("w") as stream:
+        stream.write("\n".join(headers) + "\n")
+        for index in range(8760):
+            stamp = datetime(2023, 1, 1) + timedelta(hours=index)
+            row = ["0"] * 35
+            row[:10] = ["2023", str(stamp.month), str(stamp.day), str(stamp.hour + 1),
+                        "60", "?", "10", "5", "70", "101325"]
+            row[12] = "300"
+            row[20:22] = ["180", "2"]
+            stream.write(",".join(row) + "\n")
+    building = epsm.Building()
+    building.hvac = building.hvac.with_changes(delivery=DeliverySpec(heating=HeatingDeliverySpec(
+        carrier="district_heat", efficiency=1, specific_fan_power_w_per_l_s=1,
+        source="Synthetic test delivery assumption")))
+    window = building.construction_set.elements[BuildingElement.WINDOW]
+    measure = RenovationMeasure(
+        "test-window", "envelope", "Test window", "Synthetic test choice", "window",
+        operations=(ConstructionOperation("replace_element", BuildingElement.WINDOW,
+                                          element=window.with_changes(u_value=1.0)),))
+    child = building.renovate(measure)
+    material_factors = {
+        q.material_id: {"A1A3": EnvironmentalFactor(2, "m2", "A1A3", "Synthetic test factor")}
+        for q in child.material_flows[-1].installed
+    }
+    assessment = AssessmentSettings(
+        period_years=30, energy_boundary="space_heating_and_fans", baseline="retained",
+        material_modules=("A1A3",), material_factors=material_factors,
+        carrier_factors={key: EnvironmentalFactor(.1, "kWh", "B6", "Synthetic test factor")
+                         for key in ("district_heat", "electricity")},
+    )
+    options = dict(bundles=[(measure,)], max_depth=1, budget=2, engine="epsm_rc",
+                   weather=Weather.from_epw(path), assessment=assessment, directory=tmp_path / "tree",
+                   evaluation_options={"directory": tmp_path / "engine"})
+    tree = optimise_renovations(building, **options)
+    assert len(tree.nodes) == 2
+    assert all(node.feasible for node in tree.nodes), [node.reasons for node in tree.nodes]
+    assert tree.nodes[1].energy_kwh < tree.nodes[0].energy_kwh
+    resumed = optimise_renovations(building, **options)
+    assert [n.evaluation_id for n in resumed.nodes] == [n.evaluation_id for n in tree.nodes]

@@ -64,7 +64,8 @@ def prepare(directory, cases, *, handler="epsm_workflows.integration:evaluate", 
             if read_json(path) != manifest:
                 raise ValueError("An existing prepared plan is immutable")
             return manifest
-        (root / "assets").mkdir(parents=True, exist_ok=True)
+        for name in ("assets", "results", "attempts", "artifacts"):
+            (root / name).mkdir(parents=True, exist_ok=True)
         for index, (case, original) in enumerate(zip(cases, supplied)):
             for name, asset in case["assets"].items():
                 target = root / asset["path"]
@@ -132,6 +133,50 @@ def _handler(reference):
     return value
 
 
+def _write_record(path, value):
+    atomic_json(path, {**value, "record_sha256": digest(value)})
+
+
+def _read_result(path, manifest, index):
+    value = read_json(path)
+    checksum = value.pop("record_sha256", None)
+    if checksum != digest(value):
+        raise ValueError("Stored result content has changed or is incomplete")
+    if (value.get("plan_id") != manifest["id"]
+            or value.get("case_id") != manifest["case_ids"][index]
+            or value.get("index") != index):
+        raise ValueError("Stored result belongs to different prepared inputs")
+    if value.get("status") not in {"succeeded", "failed"}:
+        raise ValueError("Stored result is not a completed attempt")
+    if value["status"] == "succeeded" and "result" not in value:
+        raise ValueError("Successful attempt has no result")
+    return value
+
+
+def validate_plan(directory):
+    """Verify prepared identities and file contents before moving/executing a plan."""
+    manifest = _manifest(directory)
+    for index in range(len(manifest["case_ids"])):
+        _, case = _case(directory, index)
+        for asset in case["assets"].values():
+            _verify_asset(directory, asset)
+    return manifest
+
+
+def read_results(directory, *, require_success=True):
+    """Read verified results in prepared row order; incomplete matrices are rejected."""
+    root = Path(directory)
+    manifest = _manifest(root)
+    rows = []
+    for index in range(len(manifest["case_ids"])):
+        path = root / "results" / f"{index:06d}.json"
+        row = _read_result(path, manifest, index) if path.exists() else None
+        if require_success and (row is None or row["status"] != "succeeded"):
+            raise ValueError(f"Prepared case {index} has no successful result")
+        rows.append(row)
+    return tuple(rows)
+
+
 def run_case(directory, index, *, retry_failed=False):
     """Run one immutable case at most once successfully; retain every attempt."""
     root = Path(directory)
@@ -139,16 +184,14 @@ def run_case(directory, index, *, retry_failed=False):
     result_path = root / "results" / f"{index:06d}.json"
     with exclusive_lock(root / "locks" / f"{index:06d}.lock"):
         if result_path.exists():
-            previous = read_json(result_path)
-            if previous["plan_id"] != manifest["id"] or previous["case_id"] != case["id"]:
-                raise ValueError("Stored result belongs to different prepared inputs")
+            previous = _read_result(result_path, manifest, index)
             if previous["status"] == "succeeded" or not retry_failed:
                 return previous
         attempt_id = uuid4().hex
         attempt = {"id": attempt_id, "plan_id": manifest["id"], "case_id": case["id"],
                    "index": index, "status": "running", "started_at": datetime.now(timezone.utc).isoformat()}
         attempt_path = root / "attempts" / f"{index:06d}" / f"{attempt_id}.json"
-        atomic_json(attempt_path, attempt)
+        _write_record(attempt_path, attempt)
         try:
             result = _handler(manifest["handler"])(_payload(root, case, attempt_id))
             attempt.update(status="succeeded", result=json_value(result))
@@ -156,8 +199,8 @@ def run_case(directory, index, *, retry_failed=False):
             attempt.update(status="failed", error={"type": type(error).__name__, "message": str(error),
                                                    "traceback": traceback.format_exc()})
         attempt["finished_at"] = datetime.now(timezone.utc).isoformat()
-        atomic_json(attempt_path, attempt)
-        atomic_json(result_path, attempt)
+        _write_record(attempt_path, attempt)
+        _write_record(result_path, attempt)
         return attempt
 
 
@@ -169,9 +212,7 @@ def pending(directory, *, retry_failed=False):
     for index in range(len(manifest["case_ids"])):
         path = root / "results" / f"{index:06d}.json"
         if path.exists():
-            stored = read_json(path)
-            if stored["plan_id"] != manifest["id"]:
-                raise ValueError("Stored result belongs to another plan")
+            stored = _read_result(path, manifest, index)
             if stored["status"] == "succeeded" or not retry_failed:
                 continue
         try:
@@ -190,9 +231,7 @@ def status(directory):
     for index in range(counts["total"]):
         path = root / "results" / f"{index:06d}.json"
         if path.exists():
-            stored = read_json(path)
-            if stored["plan_id"] != manifest["id"]:
-                raise ValueError("Stored result belongs to another plan")
+            stored = _read_result(path, manifest, index)
             counts[stored["status"]] += 1
         else:
             counts["unfinished"] += 1

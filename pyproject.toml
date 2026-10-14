@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "epsm_workflows"
 dynamic = ["version"]
 requires-python = ">=3.11"
-dependencies = ["epsm_core==0.1.0.dev0"]
+dependencies = ["epsm_core>=0.2.0.dev0", "epsm_data>=0.4.0.dev1"]
 
 [project.optional-dependencies]
 epsm = ["epsm"]
