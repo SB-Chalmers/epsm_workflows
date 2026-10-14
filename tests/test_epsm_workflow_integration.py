@@ -97,3 +97,35 @@ def test_real_rc_and_automatic_lca_renovation_tree(tmp_path):
     assert tree.nodes[1].energy_kwh < tree.nodes[0].energy_kwh
     resumed = optimise_renovations(building, **options)
     assert [n.evaluation_id for n in resumed.nodes] == [n.evaluation_id for n in tree.nodes]
+
+
+def test_builtin_search_rejects_changed_weather_or_runtime(tmp_path, monkeypatch):
+    """Resume validates inputs before bypassing the calculation cache."""
+    from epsm import provenance
+
+    weather = tmp_path / "weather.epw"
+    weather.write_text("LOCATION,Test,Test,SWE,SYNTHETIC,0,57,12,1,20\n")
+    baseline = epsm.Building()
+    calls = []
+
+    def simulate(self, **options):
+        calls.append(options)
+        return {"energy": {"annual_delivered_energy_kwh": 100},
+                "lca": {"total_gwp_kgco2e": 50, "status": "complete"}}
+
+    monkeypatch.setattr(epsm.Building, "simulate", simulate)
+    options = dict(bundles=[], max_depth=0, engine="epsm_rc",
+                   weather=str(weather), directory=tmp_path / "tree")
+    original = optimise_renovations(baseline, **options)
+    resumed = optimise_renovations(baseline, **options)
+    assert original.id == resumed.id and len(calls) == 1
+    weather.write_text(weather.read_text() + "COMMENTS 1,Changed evidence\n")
+    with pytest.raises(ValueError, match="configuration"):
+        optimise_renovations(baseline, **options)
+    weather.write_text("LOCATION,Test,Test,SWE,SYNTHETIC,0,57,12,1,20\n")
+    original_implementation = provenance.implementation_identity
+    monkeypatch.setattr(provenance, "implementation_identity",
+        lambda package: "changed-assessment" if package == "epsm_lca" else original_implementation(package))
+    with pytest.raises(ValueError, match="configuration"):
+        optimise_renovations(baseline, **options)
+    assert len(calls) == 1

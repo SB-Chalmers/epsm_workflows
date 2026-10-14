@@ -14,6 +14,7 @@ import shlex
 import subprocess
 from tempfile import TemporaryDirectory
 
+from ._inspection import inspection
 from .records import atomic_json, exclusive_lock, read_json
 
 
@@ -38,6 +39,15 @@ class VeraExecutor:
     remote_directory: str
     python: str = "python3"
     command: object = field(default=subprocess.run, repr=False)
+
+    def __repr__(self):
+        return inspection(type(self).__name__, host=self.host, remote_directory=self.remote_directory)
+
+    __str__ = __repr__
+
+    def summary(self):
+        """Describe the configured endpoint without opening an SSH connection."""
+        return {"host": self.host, "remote_directory": self.remote_directory, "python": self.python}
 
     def __post_init__(self):
         if not re.fullmatch(r"[A-Za-z0-9_.@-]+", self.host) or self.host.startswith("-"):

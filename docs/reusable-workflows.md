@@ -13,6 +13,12 @@ incomplete evaluations remain nodes and may have valid descendants. Measures can
 repeat along a path unless `allow_repeated=True`. Bundle order is retained and Core
 validates physical changes.
 
+Printing a tree or node shows bounded identities/counts, without expanding hourly
+results or building inputs. Use `summary()` for loaded metadata and objectives;
+`to_dict()` explicitly exports the full record. Prepared cases, sensitivity designs
+and Vera executors provide the same bounded inspection without reading files or
+contacting services.
+
 All intermediate states participate in the feasible Pareto comparison. Dominated
 prefixes are expanded because later interventions may improve their outcome. The
 bounded enumeration does not claim a global optimum after exhausting its budget;
@@ -35,6 +41,10 @@ distinct; the declared energy boundary must have complete coverage.
 
 - The tree pins baseline inputs, measure definitions, evaluator and constraints.
   Depth and budget may increase when resuming.
+- Built-in evaluation pins weather contents/calendar, EPSM implementation and
+  dependency identities, assessment implementation, and EnergyPlus executable/schema
+  when selected. It uses the public `epsm.evaluation_identity` inspection. Changed
+  inputs or runtime reject resume even when completed nodes would bypass simulation.
 - A node identity includes its parent and measure bundle. Equal final physical
   states reached through different interventions remain separate nodes.
 - The evaluator supplies independent energy, LCA and evaluation identities.
@@ -44,6 +54,10 @@ distinct; the declared energy boundary must have complete coverage.
 prevents concurrent tree writers. Configuration changes reject resume. Persistent
 custom callables require `evaluator_id` and `constraint_id`; change these when their
 semantics change. Failed evaluations remain evidence rather than silently retrying.
+The current tree configuration uses schema 2; earlier experimental checkpoints must
+be kept separately and cannot be resumed as a current calculation. Inspecting the
+built-in EnergyPlus identity requires its executable locally. For remote-only engine
+environments, use an explicitly identified custom evaluator.
 
 ## Parametric designs and sensitivity
 

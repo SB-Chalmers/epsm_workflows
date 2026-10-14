@@ -16,6 +16,7 @@ import shutil
 import traceback
 from uuid import uuid4
 
+from ._inspection import inspection
 from .records import atomic_json, digest, exclusive_lock, json_value, read_json
 
 
@@ -25,6 +26,17 @@ class PreparedEvaluation:
     inputs: dict = field(default_factory=dict)
     name: str = ""
     files: dict = field(default_factory=dict)
+
+    def __repr__(self):
+        return inspection(type(self).__name__, name=self.name, inputs=len(self.inputs),
+                          files=len(self.files))
+
+    __str__ = __repr__
+
+    def summary(self):
+        """Describe declared inputs without reading or hashing asset files."""
+        return {"name": self.name, "payload_fields": tuple(self.payload),
+                "input_names": tuple(self.inputs), "file_names": tuple(self.files)}
 
     @property
     def id(self):

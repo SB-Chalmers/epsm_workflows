@@ -12,6 +12,8 @@ import math
 import random
 import statistics
 
+from ._inspection import inspection
+
 
 @dataclass(frozen=True)
 class Parameter:
@@ -21,6 +23,15 @@ class Parameter:
     lower: float
     upper: float
     unit: str = "1"
+
+    def __repr__(self):
+        return inspection(type(self).__name__, name=self.name, lower=self.lower,
+                          upper=self.upper, unit=self.unit)
+
+    __str__ = __repr__
+
+    def summary(self):
+        return {"name": self.name, "lower": self.lower, "upper": self.upper, "unit": self.unit}
 
     def __post_init__(self):
         if not self.name or not self.unit:
@@ -68,6 +79,17 @@ class SensitivityDesign:
     n: int
     seed: int
     samples: tuple[dict, ...]
+
+    def __repr__(self):
+        return inspection(type(self).__name__, parameters=len(self.parameters), n=self.n,
+                          samples=len(self.samples), seed=self.seed)
+
+    __str__ = __repr__
+
+    def summary(self):
+        return {"method": "independent_uniform_jansen", "parameters": tuple(
+            parameter.summary() for parameter in self.parameters),
+            "base_samples": self.n, "samples": len(self.samples), "seed": self.seed}
 
     def to_dict(self):
         from dataclasses import asdict

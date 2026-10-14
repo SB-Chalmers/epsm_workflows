@@ -11,6 +11,7 @@ from itertools import combinations
 import math
 from pathlib import Path
 
+from ._inspection import inspection
 from .records import atomic_json, digest, exclusive_lock, json_value, read_json
 
 
@@ -29,6 +30,20 @@ class RenovationNode:
     carbon_kgco2e: float | None
     feasible: bool
     reasons: tuple[str, ...] = ()
+
+    def __repr__(self):
+        return inspection(type(self).__name__, id=self.id, depth=self.depth,
+                          actions=len(self.action_ids), feasible=self.feasible)
+
+    __str__ = __repr__
+
+    def summary(self):
+        """Return loaded identities and objectives without expanding saved inputs."""
+        return {"id": self.id, "parent_id": self.parent_id, "depth": self.depth,
+                "action_ids": self.action_ids, "evaluation_id": self.evaluation_id,
+                "energy_id": self.energy_id, "lca_id": self.lca_id,
+                "energy_kwh": self.energy_kwh, "carbon_kgco2e": self.carbon_kgco2e,
+                "feasible": self.feasible, "reasons": self.reasons}
 
     @property
     def evaluation_id(self):
@@ -58,6 +73,19 @@ class RenovationTree:
     nodes: tuple[RenovationNode, ...]
     rejected: tuple[dict, ...] = ()
     exhausted_budget: bool = False
+
+    def __repr__(self):
+        return inspection(type(self).__name__, id=self.id, nodes=len(self.nodes),
+                          rejected=len(self.rejected), exhausted_budget=self.exhausted_budget)
+
+    __str__ = __repr__
+
+    def summary(self):
+        """Report loaded counts; Pareto calculation remains an explicit operation."""
+        return {"id": self.id, "nodes": len(self.nodes), "rejected": len(self.rejected),
+                "feasible": sum(node.feasible for node in self.nodes),
+                "max_depth": max((node.depth for node in self.nodes), default=0),
+                "exhausted_budget": self.exhausted_budget}
 
     @property
     def pareto(self):
@@ -176,6 +204,8 @@ def optimise_renovations(
     options = dict(evaluation_options or {})
     output_root = options.pop("directory", Path(directory) / "artifacts" if directory else None)
     if evaluator is None:
+        from epsm import EvaluationCache, Weather, evaluation_identity
+
         # Search owns an independent working baseline; caller edits and results
         # remain separate from branch execution.
         building = building.copy()
@@ -183,11 +213,14 @@ def optimise_renovations(
             from copy import deepcopy
             building.assessment = deepcopy(assessment)
         if cache is None:
-            from epsm import EvaluationCache
             cache = EvaluationCache(Path(directory) / "cache" if directory else None)
-    evaluation_config = {"evaluator_id": evaluator_id} if evaluator else {
-        "engine": engine, "weather": json_value(weather), "options": json_value(options)}
-    config = {"schema": 1, "baseline": json_value(building), "bundles": definitions,
+        # Capture file content even when the caller supplied only a path. The
+        # evaluator then uses this same inspected Weather for every candidate.
+        weather = weather if isinstance(weather, Weather) else Weather.from_epw(weather)
+        evaluation_config = evaluation_identity(engine=engine, weather=weather, **options)
+    else:
+        evaluation_config = {"evaluator_id": evaluator_id}
+    config = {"schema": 2, "baseline": json_value(building), "bundles": definitions,
               "allow_repeated": allow_repeated, "evaluation": evaluation_config,
               "constraint_id": constraint_id}
     identity = digest(config)
