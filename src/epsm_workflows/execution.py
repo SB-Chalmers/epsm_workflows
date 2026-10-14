@@ -7,8 +7,12 @@ evaluation is a named public callable receiving one JSON-compatible payload.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import importlib.metadata
+import importlib.util
 import json
 import logging
+import platform
 import shutil
 import traceback
 from concurrent.futures import ThreadPoolExecutor
@@ -23,6 +27,80 @@ from ._inspection import inspection
 from .records import atomic_json, digest, exclusive_lock, json_value, read_json
 
 logger = logging.getLogger(__name__)
+
+
+def _runtime_identity(cases, handler):
+    """Fingerprint the worker code and selected engine used by prepared cases."""
+    packages = {}
+    for name in (
+        "epsm_workflows", "epsm", "epsm_core", "epsm_data", "epsm_db",
+        "epsm_lca", "epsm_rc", "epsm_studies", "smhi2epw",
+    ):
+        spec = importlib.util.find_spec(name)
+        if spec is None or spec.origin is None:
+            continue
+        root = Path(spec.origin).parent
+        fingerprint = hashlib.sha256()
+        for path in sorted(root.rglob("*")):
+            if path.is_file() and path.suffix in {".py", ".json"}:
+                fingerprint.update(str(path.relative_to(root)).encode())
+                fingerprint.update(hashlib.sha256(path.read_bytes()).digest())
+        try:
+            version = importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            version = None
+        packages[name] = {"version": version, "source_sha256": fingerprint.hexdigest()}
+    module = handler.split(":", 1)[0]
+    spec = importlib.util.find_spec(module)
+    if spec is None:
+        raise ImportError(f"Install the prepared handler module: {module}")
+    handler_hash = (
+        hashlib.sha256(Path(spec.origin).read_bytes()).hexdigest()
+        if spec.origin and Path(spec.origin).is_file() else None
+    )
+    dependencies = {}
+    for name in ("numpy", "pandas", "scipy", "pydantic", "shapely", "pvlib", "hplib"):
+        try:
+            dependencies[name] = importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            dependencies[name] = None
+    engines = {}
+    if handler == "epsm_workflows.integration:evaluate":
+        for case in cases:
+            simulation = case["payload"].get("simulation", {})
+            engine = simulation.get("engine", "energyplus")
+            if engine == "energyplus":
+                from epsm_core.compiler import EnergyPlusCompiler
+
+                compiler = EnergyPlusCompiler(
+                    simulation.get("energyplus"), settings=simulation.get("settings")
+                )
+                engines[engine] = {
+                    "executable_sha256": compiler.engine_hash,
+                    "schema_sha256": compiler.schema_hash,
+                    "version": compiler.version,
+                }
+            elif engine == "epsm_rc":
+                engines[engine] = packages.get("epsm_rc")
+            else:
+                raise ValueError(f"Unsupported prepared engine: {engine}")
+    return {
+        "python": platform.python_version(),
+        "packages": packages,
+        "dependencies": dependencies,
+        "handler_sha256": handler_hash,
+        "engines": engines,
+    }
+
+
+def _verify_runtime(manifest, cases):
+    expected = manifest.get("runtime")
+    if expected is None:
+        raise ValueError("Prepared plan has no worker runtime identity; prepare a new plan")
+    actual = _runtime_identity(cases, manifest["handler"])
+    if actual != expected:
+        raise ValueError("Worker runtime differs from the prepared plan")
+    return digest(actual)
 
 
 @dataclass(frozen=True)
@@ -93,10 +171,11 @@ def prepare(
             "Prepared cases need nonempty, unique identities; name repeated design rows"
         )
     manifest = {
-        "schema": 1,
+        "schema": 2,
         "handler": handler,
         "environment": json_value(environment or {}),
         "case_ids": [case["id"] for case in cases],
+        "runtime": _runtime_identity(cases, handler),
     }
     manifest["id"] = digest(manifest)
     with exclusive_lock(root / ".prepare.lock"):
@@ -205,6 +284,7 @@ def _read_attempt(path, manifest, index, *, completed=False):
         value.get("plan_id") != manifest["id"]
         or value.get("case_id") != manifest["case_ids"][index]
         or value.get("index") != index
+        or value.get("runtime_sha256") != digest(manifest["runtime"])
     ):
         raise ValueError("Stored result belongs to different prepared inputs")
     allowed = (
@@ -249,6 +329,9 @@ def run_case(directory, index, *, retry_failed=False):
     """Run one immutable case at most once successfully; retain every attempt."""
     root = Path(directory)
     manifest, case = _case(root, index)
+    runtime_sha256 = _verify_runtime(manifest, [
+        _case(root, row)[1] for row in range(len(manifest["case_ids"]))
+    ])
     result_path = root / "results" / f"{index:06d}.json"
     with exclusive_lock(root / "locks" / f"{index:06d}.lock"):
         if result_path.exists():
@@ -274,6 +357,7 @@ def run_case(directory, index, *, retry_failed=False):
             "case_id": case["id"],
             "index": index,
             "status": "running",
+            "runtime_sha256": runtime_sha256,
             "started_at": datetime.now(timezone.utc).isoformat(),
         }
         attempt_path = root / "attempts" / f"{index:06d}" / f"{attempt_id}.json"
@@ -329,6 +413,9 @@ def pending(directory, *, retry_failed=False):
     """Return unfinished, currently unlocked case indices."""
     root = Path(directory)
     manifest = _manifest(root)
+    _verify_runtime(manifest, [
+        _case(root, row)[1] for row in range(len(manifest["case_ids"]))
+    ])
     indices = []
     for index in range(len(manifest["case_ids"])):
         path = root / "results" / f"{index:06d}.json"

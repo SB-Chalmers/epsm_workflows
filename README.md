@@ -61,13 +61,19 @@ must contain the pinned EPSM packages and engine. Offline tests are not live Ver
 See [the reusable workflow guide](docs/reusable-workflows.md) for identities, resumption,
 assessment interpretation and sensitivity assumptions.
 
-## Historical studies
+## Archived studies
 
-Paper-specific implementations now live in `epsm_studies.legacy_workflows`. Their
-pre-harmonisation code, tests, examples, configurations and documentation are preserved
-with checksums in Studies. Thin compatibility imports retain old Workflows module names
-when Studies is installed. New studies use the reusable interfaces above.
+Existing named studies, fixed campaigns and legacy compatibility imports were
+archived by maintainer decision on 14 October 2026. Their source, scripts,
+configurations, tests, assumptions and documentation are preserved in
+[archive/2026-10-14](archive/2026-10-14/), with original paths and a checksum
+manifest described in the [archive register](archive/README.md). Old study imports
+and command-line entry points are no longer installed. Reproduction of those
+studies is not an active requirement.
 
-Install `.[epsm]` for the facade, `.[studies]` for historical imports, and the existing
-campaign/stock/epc/weather extras for historical dependencies. Transferring old code does
-not revalidate its scientific conclusions against new package versions.
+The reusable APIs above remain active for future studies. EPC ingestion/comparison
+and measurement-year weather helpers also remain available. Install `.[epsm]` for
+the facade, `.[epc]` for publication ingestion and `.[weather]` for weather
+compilation. The `epsm-evaluations` command provides prepared execution. The
+[national database starter](database/national_stock/README.md) is a separate design
+proposal, not a deployed study workflow.

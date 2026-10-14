@@ -188,6 +188,31 @@ def test_prepared_cases_resume_and_record_attempts(tmp_path):
         )
 
 
+def test_prepared_resume_rejects_changed_worker_runtime(tmp_path, monkeypatch):
+    from epsm_workflows import execution
+
+    execution.prepare(
+        tmp_path,
+        [execution.PreparedEvaluation({"x": 2}), execution.PreparedEvaluation({"x": 3})],
+        handler="test_harmonised_workflows:evaluate_payload",
+    )
+    first = execution.run_case(tmp_path, 0)
+    assert first["runtime_sha256"]
+    original = execution._runtime_identity
+
+    def changed(cases, handler):
+        identity = original(cases, handler)
+        return {**identity, "python": "another-worker-version"}
+
+    monkeypatch.setattr(execution, "_runtime_identity", changed)
+    with pytest.raises(ValueError, match="Worker runtime differs"):
+        execution.pending(tmp_path)
+    with pytest.raises(ValueError, match="Worker runtime differs"):
+        execution.run_case(tmp_path, 1)
+    assert len(list((tmp_path / "attempts").glob("*/*.json"))) == 1
+    assert execution.status(tmp_path)["succeeded"] == 1
+
+
 def test_vera_stages_only_inputs_and_builds_quoted_submission(tmp_path, caplog):
     import logging
     import subprocess

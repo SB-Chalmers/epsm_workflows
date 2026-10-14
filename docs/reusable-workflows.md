@@ -78,8 +78,14 @@ installed material inventory for LCA.
 ## Prepared evaluations
 
 `PreparedEvaluation(payload, inputs, name, files)` holds portable JSON inputs.
-`prepare` freezes them with an importable `module:function` handler and a supplied
-environment manifest. Name repeated design rows so their identities remain distinct.
+`prepare` freezes them with an importable `module:function` handler, a supplied
+environment manifest and an observed worker runtime identity. The identity records
+Python, installed EPSM package versions and source hashes, selected dependency
+versions and handler source. For the built-in EPSM handler it also records the
+selected EnergyPlus executable/schema or RC implementation. Prepare on a host
+with the selected engine available. Workers
+compare their actual runtime with this identity before execution or resume, and
+each attempt retains its runtime hash. Name repeated design rows so their identities remain distinct.
 An existing prepared plan cannot be changed.
 
 Declared assets are copied and verified by digest. Payloads use
@@ -103,7 +109,7 @@ attempt/result checksums before merging. A local success stays selected even whe
 the remote attempt failed. A remote success can replace a local failure; all attempt
 records are retained. Conflicting artifact files are rejected instead of overwritten.
 Paths saved inside remote results continue to identify their original remote location.
-The remote Python environment must contain the pinned packages and engine. Offline
+The remote Python environment must match the prepared packages and engine. Offline
 tests verify commands, quoting, input transport and resume; they are not live Vera
 or Slurm execution evidence.
 
