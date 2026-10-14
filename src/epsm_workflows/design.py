@@ -4,13 +4,14 @@ The sensitivity design uses independent uniform Monte Carlo base matrices and
 Jansen first/total-order estimators. It does not claim a Sobol sequence or
 support correlated parameters. No building-specific ranges are supplied.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass
-from itertools import product
 import math
 import random
 import statistics
+from dataclasses import dataclass
+from itertools import product
 
 from ._inspection import inspection
 
@@ -25,18 +26,32 @@ class Parameter:
     unit: str = "1"
 
     def __repr__(self):
-        return inspection(type(self).__name__, name=self.name, lower=self.lower,
-                          upper=self.upper, unit=self.unit)
+        return inspection(
+            type(self).__name__,
+            name=self.name,
+            lower=self.lower,
+            upper=self.upper,
+            unit=self.unit,
+        )
 
     __str__ = __repr__
 
     def summary(self):
-        return {"name": self.name, "lower": self.lower, "upper": self.upper, "unit": self.unit}
+        return {
+            "name": self.name,
+            "lower": self.lower,
+            "upper": self.upper,
+            "unit": self.unit,
+        }
 
     def __post_init__(self):
         if not self.name or not self.unit:
             raise ValueError("Parameter name and unit are required")
-        if not math.isfinite(self.lower) or not math.isfinite(self.upper) or self.lower >= self.upper:
+        if (
+            not math.isfinite(self.lower)
+            or not math.isfinite(self.upper)
+            or self.lower >= self.upper
+        ):
             raise ValueError("Parameter bounds must be finite and increasing")
 
     def scale(self, value):
@@ -81,18 +96,28 @@ class SensitivityDesign:
     samples: tuple[dict, ...]
 
     def __repr__(self):
-        return inspection(type(self).__name__, parameters=len(self.parameters), n=self.n,
-                          samples=len(self.samples), seed=self.seed)
+        return inspection(
+            type(self).__name__,
+            parameters=len(self.parameters),
+            n=self.n,
+            samples=len(self.samples),
+            seed=self.seed,
+        )
 
     __str__ = __repr__
 
     def summary(self):
-        return {"method": "independent_uniform_jansen", "parameters": tuple(
-            parameter.summary() for parameter in self.parameters),
-            "base_samples": self.n, "samples": len(self.samples), "seed": self.seed}
+        return {
+            "method": "independent_uniform_jansen",
+            "parameters": tuple(parameter.summary() for parameter in self.parameters),
+            "base_samples": self.n,
+            "samples": len(self.samples),
+            "seed": self.seed,
+        }
 
     def to_dict(self):
         from dataclasses import asdict
+
         return {"method": "independent_uniform_jansen", **asdict(self)}
 
 
@@ -106,7 +131,9 @@ def sensitivity_design(parameters, n, *, seed=0):
     b = [{p.name: p.scale(rng.random()) for p in parameters} for _ in range(n)]
     samples = a + b
     for parameter in parameters:
-        samples.extend({**left, parameter.name: right[parameter.name]} for left, right in zip(a, b))
+        samples.extend(
+            {**left, parameter.name: right[parameter.name]} for left, right in zip(a, b)
+        )
     return SensitivityDesign(parameters, n, seed, tuple(samples))
 
 
@@ -120,22 +147,38 @@ def analyse_sensitivity(design, values):
     if len(values) != len(design.samples) or not all(math.isfinite(v) for v in values):
         raise ValueError("Sensitivity needs one finite result per prepared row")
     n = design.n
-    a, b = values[:n], values[n:2 * n]
+    a, b = values[:n], values[n : 2 * n]
     variance = statistics.variance(a + b)
     if variance <= 0:
         raise ValueError("Sensitivity is undefined for zero response variance")
     output = {}
     for index, parameter in enumerate(design.parameters):
-        mixed = values[(2 + index) * n:(3 + index) * n]
-        total = sum((left - value) ** 2 for left, value in zip(a, mixed)) / (2 * n * variance)
-        first = 1 - sum((right - value) ** 2 for right, value in zip(b, mixed)) / (2 * n * variance)
-        output[parameter.name] = {"first_order": first, "total_order": total,
-                                  "n": n, "response_variance": variance}
+        mixed = values[(2 + index) * n : (3 + index) * n]
+        total = sum((left - value) ** 2 for left, value in zip(a, mixed)) / (
+            2 * n * variance
+        )
+        first = 1 - sum((right - value) ** 2 for right, value in zip(b, mixed)) / (
+            2 * n * variance
+        )
+        output[parameter.name] = {
+            "first_order": first,
+            "total_order": total,
+            "n": n,
+            "response_variance": variance,
+        }
     return output
 
 
-def parametric_cases(building, samples, apply, *, engine="energyplus", weather=None, assessment=None,
-                     simulation_options=None):
+def parametric_cases(
+    building,
+    samples,
+    apply,
+    *,
+    engine="energyplus",
+    weather=None,
+    assessment=None,
+    simulation_options=None,
+):
     """Freeze each independently edited copy as an executable EPSM case.
 
     ``apply(copy, parameters)`` may mutate the copy and return None, or return a
@@ -152,6 +195,7 @@ def parametric_cases(building, samples, apply, *, engine="energyplus", weather=N
         if replacement is not None:
             candidate = replacement
         from pathlib import Path
+
         weather_data = json_value(weather)
         files = {}
         if isinstance(weather_data, dict) and "epw_path" in weather_data:
@@ -160,11 +204,19 @@ def parametric_cases(building, samples, apply, *, engine="energyplus", weather=N
         elif isinstance(weather, (str, Path)):
             files["weather"] = str(weather)
             weather_data = {"$asset": "weather"}
-        simulation = {"engine": engine, "weather": weather_data, **dict(simulation_options or {})}
+        simulation = {
+            "engine": engine,
+            "weather": weather_data,
+            **dict(simulation_options or {}),
+        }
         if assessment is not None:
             simulation["assessment"] = json_value(assessment)
-        cases.append(PreparedEvaluation(
-            {"building": json_value(candidate), "simulation": simulation},
-            inputs=dict(parameters), name=f"case-{index:06d}", files=files,
-        ))
+        cases.append(
+            PreparedEvaluation(
+                {"building": json_value(candidate), "simulation": simulation},
+                inputs=dict(parameters),
+                name=f"case-{index:06d}",
+                files=files,
+            )
+        )
     return tuple(cases)

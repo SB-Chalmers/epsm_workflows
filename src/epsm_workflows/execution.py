@@ -3,17 +3,18 @@
 The same on-disk plan is read by local workers and Slurm array workers. Scientific
 evaluation is a named public callable receiving one JSON-compatible payload.
 """
+
 from __future__ import annotations
 
 import argparse
+import json
+import shutil
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from importlib import import_module
-import json
 from pathlib import Path
-import shutil
-import traceback
 from uuid import uuid4
 
 from ._inspection import inspection
@@ -28,15 +29,23 @@ class PreparedEvaluation:
     files: dict = field(default_factory=dict)
 
     def __repr__(self):
-        return inspection(type(self).__name__, name=self.name, inputs=len(self.inputs),
-                          files=len(self.files))
+        return inspection(
+            type(self).__name__,
+            name=self.name,
+            inputs=len(self.inputs),
+            files=len(self.files),
+        )
 
     __str__ = __repr__
 
     def summary(self):
         """Describe declared inputs without reading or hashing asset files."""
-        return {"name": self.name, "payload_fields": tuple(self.payload),
-                "input_names": tuple(self.inputs), "file_names": tuple(self.files)}
+        return {
+            "name": self.name,
+            "payload_fields": tuple(self.payload),
+            "input_names": tuple(self.inputs),
+            "file_names": tuple(self.files),
+        }
 
     @property
     def id(self):
@@ -44,17 +53,27 @@ class PreparedEvaluation:
 
     def to_dict(self):
         import hashlib
+
         assets = {}
         for name, filename in self.files.items():
             path = Path(filename)
             checksum = hashlib.sha256(path.read_bytes()).hexdigest()
-            assets[name] = {"sha256": checksum, "path": f"assets/{checksum}/{path.name}"}
-        value = {"payload": json_value(self.payload), "inputs": json_value(self.inputs),
-                 "name": self.name, "assets": assets}
+            assets[name] = {
+                "sha256": checksum,
+                "path": f"assets/{checksum}/{path.name}",
+            }
+        value = {
+            "payload": json_value(self.payload),
+            "inputs": json_value(self.inputs),
+            "name": self.name,
+            "assets": assets,
+        }
         return {"id": digest(value), **value}
 
 
-def prepare(directory, cases, *, handler="epsm_workflows.integration:evaluate", environment=None):
+def prepare(
+    directory, cases, *, handler="epsm_workflows.integration:evaluate", environment=None
+):
     """Freeze cases and evaluator/environment identity without running simulations.
 
     Supply package/source revisions in environment to bind a plan to its runtime.
@@ -66,9 +85,15 @@ def prepare(directory, cases, *, handler="epsm_workflows.integration:evaluate", 
     supplied = list(cases)
     cases = [case.to_dict() for case in supplied]
     if not cases or len({case["id"] for case in cases}) != len(cases):
-        raise ValueError("Prepared cases need nonempty, unique identities; name repeated design rows")
-    manifest = {"schema": 1, "handler": handler, "environment": json_value(environment or {}),
-                "case_ids": [case["id"] for case in cases]}
+        raise ValueError(
+            "Prepared cases need nonempty, unique identities; name repeated design rows"
+        )
+    manifest = {
+        "schema": 1,
+        "handler": handler,
+        "environment": json_value(environment or {}),
+        "case_ids": [case["id"] for case in cases],
+    }
     manifest["id"] = digest(manifest)
     with exclusive_lock(root / ".prepare.lock"):
         path = root / "manifest.json"
@@ -98,6 +123,7 @@ def _manifest(root):
 
 def _verify_asset(root, asset):
     import hashlib
+
     root = Path(root).resolve()
     path = (root / asset["path"]).resolve()
     if not path.is_relative_to(root / "assets"):
@@ -113,14 +139,19 @@ def _case(root, index):
     if not 0 <= index < len(manifest["case_ids"]):
         raise IndexError(index)
     case = read_json(root / "cases" / f"{index:06d}.json")
-    identity = digest({key: case[key] for key in ("payload", "inputs", "name", "assets")})
+    identity = digest(
+        {key: case[key] for key in ("payload", "inputs", "name", "assets")}
+    )
     if case["id"] != identity or identity != manifest["case_ids"][index]:
         raise ValueError(f"Prepared case {index} has changed")
     return manifest, case
 
 
 def _payload(root, case, attempt_id):
-    assets = {name: str(_verify_asset(root, asset)) for name, asset in case["assets"].items()}
+    assets = {
+        name: str(_verify_asset(root, asset)) for name, asset in case["assets"].items()
+    }
+
     def resolve(value):
         if isinstance(value, dict):
             if set(value) == {"$asset"}:
@@ -129,11 +160,15 @@ def _payload(root, case, attempt_id):
         if isinstance(value, list):
             return [resolve(data) for data in value]
         return value
+
     value = resolve(case["payload"])
     if "_execution" in value:
         raise ValueError("_execution is reserved for executor context")
-    value["_execution"] = {"directory": str(Path(root).resolve()), "case_id": case["id"],
-                            "attempt_id": attempt_id}
+    value["_execution"] = {
+        "directory": str(Path(root).resolve()),
+        "case_id": case["id"],
+        "attempt_id": attempt_id,
+    }
     return value
 
 
@@ -155,11 +190,15 @@ def _read_attempt(path, manifest, index, *, completed=False):
     checksum = value.pop("record_sha256", None)
     if checksum != digest(value):
         raise ValueError("Stored result content has changed or is incomplete")
-    if (value.get("plan_id") != manifest["id"]
-            or value.get("case_id") != manifest["case_ids"][index]
-            or value.get("index") != index):
+    if (
+        value.get("plan_id") != manifest["id"]
+        or value.get("case_id") != manifest["case_ids"][index]
+        or value.get("index") != index
+    ):
         raise ValueError("Stored result belongs to different prepared inputs")
-    allowed = {"succeeded", "failed"} if completed else {"running", "succeeded", "failed"}
+    allowed = (
+        {"succeeded", "failed"} if completed else {"running", "succeeded", "failed"}
+    )
     if value.get("status") not in allowed:
         raise ValueError("Stored result is not a completed attempt")
     if value["status"] == "succeeded" and "result" not in value:
@@ -206,16 +245,28 @@ def run_case(directory, index, *, retry_failed=False):
             if previous["status"] == "succeeded" or not retry_failed:
                 return previous
         attempt_id = uuid4().hex
-        attempt = {"id": attempt_id, "plan_id": manifest["id"], "case_id": case["id"],
-                   "index": index, "status": "running", "started_at": datetime.now(timezone.utc).isoformat()}
+        attempt = {
+            "id": attempt_id,
+            "plan_id": manifest["id"],
+            "case_id": case["id"],
+            "index": index,
+            "status": "running",
+            "started_at": datetime.now(timezone.utc).isoformat(),
+        }
         attempt_path = root / "attempts" / f"{index:06d}" / f"{attempt_id}.json"
         _write_record(attempt_path, attempt)
         try:
             result = _handler(manifest["handler"])(_payload(root, case, attempt_id))
             attempt.update(status="succeeded", result=json_value(result))
         except Exception as error:
-            attempt.update(status="failed", error={"type": type(error).__name__, "message": str(error),
-                                                   "traceback": traceback.format_exc()})
+            attempt.update(
+                status="failed",
+                error={
+                    "type": type(error).__name__,
+                    "message": str(error),
+                    "traceback": traceback.format_exc(),
+                },
+            )
         attempt["finished_at"] = datetime.now(timezone.utc).isoformat()
         _write_record(attempt_path, attempt)
         _write_record(result_path, attempt)
@@ -244,8 +295,13 @@ def pending(directory, *, retry_failed=False):
 def status(directory):
     root = Path(directory)
     manifest = _manifest(root)
-    counts = {"plan_id": manifest["id"], "total": len(manifest["case_ids"]),
-              "succeeded": 0, "failed": 0, "unfinished": 0}
+    counts = {
+        "plan_id": manifest["id"],
+        "total": len(manifest["case_ids"]),
+        "succeeded": 0,
+        "failed": 0,
+        "unfinished": 0,
+    }
     for index in range(counts["total"]):
         path = root / "results" / f"{index:06d}.json"
         if path.exists():
@@ -262,7 +318,12 @@ def run_local(directory, *, workers=1, retry_failed=False):
         raise ValueError("workers must be a positive integer")
     indices = pending(directory, retry_failed=retry_failed)
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        list(pool.map(lambda index: run_case(directory, index, retry_failed=retry_failed), indices))
+        list(
+            pool.map(
+                lambda index: run_case(directory, index, retry_failed=retry_failed),
+                indices,
+            )
+        )
     return status(directory)
 
 
@@ -281,9 +342,16 @@ def main(argv=None):
     elif args.index is not None:
         value = run_case(args.directory, args.index, retry_failed=args.retry_failed)
     else:
-        value = run_local(args.directory, workers=args.workers, retry_failed=args.retry_failed)
+        value = run_local(
+            args.directory, workers=args.workers, retry_failed=args.retry_failed
+        )
     print(json.dumps(value))
-    return 1 if isinstance(value, dict) and (value.get("status") == "failed" or value.get("failed", 0)) else 0
+    return (
+        1
+        if isinstance(value, dict)
+        and (value.get("status") == "failed" or value.get("failed", 0))
+        else 0
+    )
 
 
 if __name__ == "__main__":
