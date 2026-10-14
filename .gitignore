@@ -17,3 +17,6 @@ output/
 .ipynb_checkpoints/
 .DS_Store
 *.py[cod]
+
+# Default platform evaluation artifacts
+/outputs/
