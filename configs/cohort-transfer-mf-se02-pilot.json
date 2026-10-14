@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "membership_publication": "../../epc_join/outputs/releases/2.0.0",
+  "cohort_file": "../output/archetype-diagnosis-mf-se02-2026-10-03/physics/cohort.parquet",
+  "targets_file": "../output/archetype-diagnosis-mf-se02-2026-10-03/targets-development.parquet",
+  "weather_directory": "/Users/ssanjay/GitHub/epsm_workflows/output/archetype-diagnosis-mf-se02-2026-10-03/physics/weather",
+  "catalogue_climate_zone": "SE.Zone3",
+  "morris_trajectories": 2,
+  "joint_designs": 16,
+  "note": "Initial integration pilot on twelve previously examined properties; never qualifies a population release. Full campaign defaults use four Morris trajectories and 32 joint designs.",
+  "weather_manifest": "/Users/ssanjay/GitHub/epsm_workflows/output/cohort-transfer-gothenburg-weather-2026-10-04/weather-manifest.json"
+}

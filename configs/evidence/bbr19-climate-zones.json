@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "source_url": "https://rinfo.boverket.se/BFS2011-6/pdf/BFS2011-26.pdf",
+  "source_locator": "BBR 19 section 9:12, printed pages 138–139, PDF pages 138–139",
+  "verified_date": "2026-10-03",
+  "purpose": "Historical three-zone classification used by epsm_data; not current regulatory requirements or actual-year weather",
+  "county_codes": {
+    "25": "SE.Zone1", "24": "SE.Zone1", "23": "SE.Zone1",
+    "22": "SE.Zone2", "21": "SE.Zone2", "20": "SE.Zone2", "17": "SE.Zone2",
+    "14": "SE.Zone3", "06": "SE.Zone3", "07": "SE.Zone3", "08": "SE.Zone3",
+    "05": "SE.Zone3", "04": "SE.Zone3", "18": "SE.Zone3", "19": "SE.Zone3",
+    "01": "SE.Zone3", "03": "SE.Zone3", "12": "SE.Zone3", "13": "SE.Zone3",
+    "10": "SE.Zone3", "09": "SE.Zone3"
+  }
+}

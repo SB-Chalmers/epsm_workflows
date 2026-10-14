@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "membership_publication": "../../epc_join/outputs/releases/2.0.0",
+  "cohort_file": "../output/archetype-diagnostics-mf-se02-2026-10-01-reviewed/cohort.json",
+  "weather_directory": "/Users/ssanjay/GitHub/epsm_workflows/output/archetype-diagnosis-mf-se02-2026-10-03/physics/weather",
+  "catalogue_climate_zone": "SE.Zone3",
+  "ventilation": "F",
+  "heating_family": "district_heat",
+  "note": "Approved parent-first MF SE.02 campaign. GIS-led v2; fixed normal-use inputs; five/three property folds; 90% below20% release gate. No new observations.",
+  "weather_manifest": "/Users/ssanjay/GitHub/epsm_workflows/output/cohort-transfer-gothenburg-weather-2026-10-04/weather-manifest.json",
+  "max_clusters": 1,
+  "workers": 8,
+  "calibration_excluded_parameters": [
+    "people_multiplier",
+    "equipment_multiplier",
+    "lighting_multiplier",
+    "setpoint_offset_c",
+    "schedule_shift_hours"
+  ],
+  "context_sources": {
+    "publication": "/Users/ssanjay/GitHub/epc_join/outputs/releases/2.0.0",
+    "height_release": "/Users/ssanjay/GitHub/footprint_height_extraction/outputs/sweden/harmonized/1.0.0",
+    "height_selection": "/Users/ssanjay/GitHub/footprint_height_extraction/outputs/sweden/inventory/selections/gothenburg.buildings.parquet",
+    "radius_m": 100
+  },
+  "boundary_audit": "../output/archetype-parent-validation-2026-10-04-v2/boundary-audit.json"
+}

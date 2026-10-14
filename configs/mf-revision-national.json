@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "stock_features": "../output/stock-national-2026-10-02-v2/features.parquet",
+  "membership_audit": "../output/archetype-membership-gis-led-2026-10-04-v2/national-membership-audit.parquet",
+  "height_quarantine": "../output/epc-height-storeys-audit-2026-10-05/affected-building-records.parquet",
+  "previously_examined_features": [
+    "../output/stock-national-2026-10-02-v2/features.parquet",
+    "../output/national-mf-se02-random-baseline-2026-10-05-v3-weather-shadow/campaign/features.json"
+  ],
+  "historical_evidence": {
+    "basement_and_northern_resistance": "../output/national-mf-se02-basement-north-sensitivity-2026-10-07/summary.json",
+    "regional_rules": "../output/national-mf-se02-climate-descriptor-review-2026-10-07/geographic-rule-comparison.json",
+    "betsi_source_audit": "../../epsm_data/evidence/betsi_review/audit.json"
+  },
+  "initial_properties": 1200,
+  "workers": 8,
+  "mf_reported_zero_flow_policy": "normal_use",
+  "engine": "/Applications/OpenStudio-3.9.0/EnergyPlus/energyplus",
+  "note": "All properties in the evaluated national statistical study are conservatively treated as previously examined. Fresh confirmation requires independent properties or a new eligible source cohort. Known extraction mismatches are quarantined pending replacement extraction."
+}

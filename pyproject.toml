@@ -13,9 +13,15 @@ campaign = ["duckdb>=1.5,<2", "numpy>=2,<3", "scipy>=1.17,<2"]
 epc = ["duckdb>=1.5,<2", "pyarrow>=23,<24", "pyproj>=3.6,<4", "shapely>=2.1,<3"]
 validation = []
 weather = ["smhi2epw"]
+stock = ["duckdb>=1.5,<2", "numpy>=2,<3", "scipy>=1.17,<2", "pandas>=2.2,<4", "pyarrow>=23,<24", "shapely>=2.1,<3", "pyproj>=3.6,<4", "scikit-learn>=1.6,<2", "geopandas>=1,<2", "matplotlib>=3.9,<4"]
 
 [project.scripts]
 epsm-workflows = "epsm_workflows.cli:main"
+epsm-stock = "epsm_workflows.stock.__main__:main"
+epsm-archetype-diagnosis = "epsm_workflows.archetype_diagnosis.__main__:main"
+epsm-archetype-application = "epsm_workflows.archetype_application:main"
+epsm-cohort-transfer = "epsm_workflows.cohort_transfer.__main__:main"
+epsm-mf-parent-dynamic = "epsm_workflows.mf_parent_dynamic:main"
 
 [tool.setuptools.dynamic]
 version = {attr = "epsm_workflows._version.__version__"}

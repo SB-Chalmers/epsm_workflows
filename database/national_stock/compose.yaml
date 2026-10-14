@@ -1,0 +1,31 @@
+name: epsm-national-stock
+services:
+  postgres:
+    image: ${EPSM_POSTGIS_IMAGE:-postgis/postgis:18-3.6}
+    # The upstream Debian image currently documents amd64 support.
+    platform: ${EPSM_POSTGIS_PLATFORM:-linux/amd64}
+    environment:
+      POSTGRES_DB: epsm_stock
+      POSTGRES_USER: epsm_owner
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    ports:
+      - "127.0.0.1:${EPSM_DB_PORT:-55432}:5432"
+    volumes:
+      # PostgreSQL 18+ uses this parent volume path.
+      - postgres_data:/var/lib/postgresql
+      - ./sql:/opt/epsm/schema:ro
+    secrets:
+      - db_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U epsm_owner -d epsm_stock"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    shm_size: 512mb
+secrets:
+  db_password:
+    file: ${EPSM_DB_PASSWORD_FILE:-./secrets/db_password}
+volumes:
+  postgres_data:

@@ -7,3 +7,13 @@ results/
 .env.*
 !.env.example
 output/
+
+# Generated runs, caches and build products.
+/runs/
+/simulation_results/
+/build/
+/dist/
+.ruff_cache/
+.ipynb_checkpoints/
+.DS_Store
+*.py[cod]

@@ -1,0 +1,54 @@
+{
+  "checked_at": "2026-10-05T07:11:29.935039+00:00",
+  "purpose": "Reviewable national Postgres/PostGIS foundation; no national data import or persistent service deployment",
+  "database_validation_runtime": "PostgreSQL 15.14 (Homebrew), isolated /private/tmp cluster, TCP disabled",
+  "relational_migrations_executed": [
+    "sql/010_foundation.sql",
+    "sql/030_access.sql"
+  ],
+  "smoke_test": "sql/050_smoke_test.sql passed; synthetic fixture fully rolled back",
+  "integrity_checks": [
+    "sparse inventory retained",
+    "multi-footprint EPC area not broadcast",
+    "missing and conflicting lineage retained",
+    "integer context values enforced",
+    "snapshot publication count enforced",
+    "published source and stock immutable",
+    "unknown coverage denominator stays NULL",
+    "published coverage immutable",
+    "unresolved model finalization rejected",
+    "finalized model immutable",
+    "worker cannot update stock",
+    "reader can query API"
+  ],
+  "example_queries": {
+    "file": "sql/040_example_queries.sql",
+    "count": 7,
+    "role": "epsm_reader",
+    "result": "all execute; empty published API after fixture rollback"
+  },
+  "compose_validation": "docker compose -f database/national_stock/compose.yaml config --quiet passed",
+  "not_executed": [
+    "sql/020_spatial.sql (local PostGIS unavailable; Docker daemon not running)",
+    "PostgreSQL18/PostGIS3.6 container",
+    "source importers",
+    "national import",
+    "BuildingSpec adapter",
+    "spatial joins",
+    "national query benchmarks",
+    "concurrent publication stress tests"
+  ],
+  "files": {
+    ".env.example": "47eedc517f6e04fb51a498ddce96395b48e83a14ee81f929259c985cf8026bc0",
+    ".gitignore": "fe47911ee865ddd1666b7e1810567f320c32e38ebdba783c4d7fd144b50cf7e4",
+    "EPSM_ADAPTER.md": "ebaceead2fc57f0e4677f9f964a3d5ebca6b0f31043cf9faeeed9a1d237d168e",
+    "README.md": "743fae777b434bde9aca6340c7360656e327698ec4d2435c161a0805108c4ae7",
+    "SOURCE_CONTRACT.md": "0011d7e8786d0021d35a53b6acd50ca464fccf3264cac0bd29373844caada9dd",
+    "compose.yaml": "0a05800bcffa980db4b16889deae07d8070083a5fbeeca80de5a6fe7ebc48e65",
+    "sql/010_foundation.sql": "e7c884cc983ff8ea4b32fe3138bf3abd102bba75d55e274aade6ded019ca994e",
+    "sql/020_spatial.sql": "3eb1eb8fc8735a234cc715cab4c1ab1aec61c50054cde6df1da505bdfb57624a",
+    "sql/030_access.sql": "95595aff8f5c753150cbfdc2d45060dea4c06334051a773065db653496803a24",
+    "sql/040_example_queries.sql": "ff7ba834cd4512fc9d66ee50a476570fcf47ef9aaed66e459027cc7799582cfc",
+    "sql/050_smoke_test.sql": "a73d1317b28905e481c7df815c5eb68cd00a0482302977f678f08cd42c00196d"
+  }
+}

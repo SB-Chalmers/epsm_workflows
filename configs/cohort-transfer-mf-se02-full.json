@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "membership_publication": "../../epc_join/outputs/releases/2.0.0",
+  "cohort_file": "../output/archetype-diagnostics-mf-se02-2026-10-01-reviewed/cohort.json",
+  "weather_directory": "/Users/ssanjay/GitHub/epsm_workflows/output/archetype-diagnosis-mf-se02-2026-10-03/physics/weather",
+  "catalogue_climate_zone": "SE.Zone3",
+  "ventilation": "F",
+  "heating_family": "district_heat",
+  "note": "Full existing 126-building SE.02 cohort, including reported heated basements. Property-separated retrospective validation; all original measurements have been inspected.",
+  "weather_manifest": "/Users/ssanjay/GitHub/epsm_workflows/output/cohort-transfer-gothenburg-weather-2026-10-04/weather-manifest.json"
+}

@@ -1,0 +1,23 @@
+{
+ "schema_version":1,
+ "publication":"../../epc_join/outputs/releases/2.0.0",
+ "epc":"../../epc_join/data/epc",
+ "age_registry":"../../building_age/outputs/national/registry.sqlite",
+ "height_release":"../../footprint_height_extraction/outputs/sweden/harmonized/1.0.0",
+ "archive":"../../epsm_core/ARCHIVE",
+ "dictionary":"../../epc_join/outputs/ubem-review-2026-09-11/dictionary_extract.json",
+ "recent_studies":"../output",
+ "context_population":"../../epsm_core/ARCHIVE/EDA/befolkning_1km_2025.gpkg",
+ "betsi_report":"../../EPSM_data/ARCHIVE/catalogue_before_parametric/data/betsi/BETSI_teknisk_status.md",
+ "minimum_training_properties":50,
+ "minimum_validation_properties":10,
+ "cluster_minimum_properties":30,
+ "cluster_resamples":20,
+ "bootstrap_resamples":1000,
+ "physics_max_buildings":200,
+ "physics_min_buildings":120,
+ "physics_min_properties":{"train":30,"validation":10,"test":20},
+ "physics_evidence_approved":false,
+ "physics_weather_manifest":null,
+ "physics_energyplus":"/Applications/OpenStudio-3.9.0/EnergyPlus/energyplus"
+}

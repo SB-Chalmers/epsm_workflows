@@ -1,0 +1,17 @@
+{
+ "schema_version": 1,
+ "source_study": "../output/stock-national-2026-10-02-v2",
+ "output": "../output/archetype-diagnosis-mf-se02-2026-10-03",
+ "filters": {"use_group":"multi_family","heating_family":"district_heat","era":"SE.02","ventilation":"F","climate_region":"county_14"},
+ "physics_municipality":"1480",
+ "weather_directory":"../output/archetype-pilot-mf-se02-f-2026-09-30/weather",
+ "energyplus":"/Applications/OpenStudio-3.9.0/EnergyPlus/energyplus",
+ "diagnostic_buildings":12,
+ "outer_folds":5,
+ "inner_folds":5,
+ "minimum_branch_properties":30,
+ "stability_resamples":20,
+ "bootstrap_resamples":1000,
+ "seed":20261003,
+ "simulation_workers":3
+}

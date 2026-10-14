@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "requests": [
+    {
+      "site_id": "1480",
+      "configuration": {
+        "cache_ttl": null,
+        "city": "Unknown",
+        "country": "SWE",
+        "latitude": 57.7089,
+        "longitude": 11.9746,
+        "max_workers": 8,
+        "radiation_station_auto": true,
+        "radiation_station_id": null,
+        "radiation_station_max_distance_km": 50.0,
+        "refresh": false,
+        "region": "SE",
+        "station_id": null,
+        "target_elevation_m": null,
+        "utc_offset": 1,
+        "year": 2017
+      },
+      "existing_cache": "/Users/ssanjay/GitHub/epsm_workflows/output/archetype-pilot-mf-se02-f-2026-09-30/weather/sources/2017/raw-cache"
+    },
+    {
+      "site_id": "1480",
+      "configuration": {
+        "cache_ttl": null,
+        "city": "Unknown",
+        "country": "SWE",
+        "latitude": 57.7089,
+        "longitude": 11.9746,
+        "max_workers": 8,
+        "radiation_station_auto": true,
+        "radiation_station_id": null,
+        "radiation_station_max_distance_km": 50.0,
+        "refresh": false,
+        "region": "SE",
+        "station_id": null,
+        "target_elevation_m": null,
+        "utc_offset": 1,
+        "year": 2018
+      },
+      "existing_cache": "/Users/ssanjay/GitHub/epsm_workflows/output/archetype-pilot-mf-se02-f-2026-09-30/weather/sources/2018/raw-cache"
+    },
+    {
+      "site_id": "1480",
+      "configuration": {
+        "cache_ttl": null,
+        "city": "Unknown",
+        "country": "SWE",
+        "latitude": 57.7089,
+        "longitude": 11.9746,
+        "max_workers": 8,
+        "radiation_station_auto": true,
+        "radiation_station_id": null,
+        "radiation_station_max_distance_km": 50.0,
+        "refresh": false,
+        "region": "SE",
+        "station_id": 72420,
+        "target_elevation_m": null,
+        "utc_offset": 1,
+        "year": 2019
+      },
+      "existing_cache": "/Users/ssanjay/GitHub/epsm_workflows/output/archetype-pilot-mf-se02-f-2026-09-30/weather/sources/2019/raw-cache"
+    },
+    {
+      "site_id": "1480",
+      "configuration": {
+        "cache_ttl": null,
+        "city": "Unknown",
+        "country": "SWE",
+        "latitude": 57.7089,
+        "longitude": 11.9746,
+        "max_workers": 8,
+        "radiation_station_auto": true,
+        "radiation_station_id": null,
+        "radiation_station_max_distance_km": 50.0,
+        "refresh": false,
+        "region": "SE",
+        "station_id": 72420,
+        "target_elevation_m": null,
+        "utc_offset": 1,
+        "year": 2020
+      },
+      "existing_cache": "/Users/ssanjay/GitHub/epsm_workflows/output/archetype-pilot-mf-se02-f-2026-09-30/weather/sources/2020/raw-cache"
+    },
+    {
+      "site_id": "1480",
+      "configuration": {
+        "cache_ttl": null,
+        "city": "Unknown",
+        "country": "SWE",
+        "latitude": 57.7089,
+        "longitude": 11.9746,
+        "max_workers": 8,
+        "radiation_station_auto": true,
+        "radiation_station_id": null,
+        "radiation_station_max_distance_km": 50.0,
+        "refresh": false,
+        "region": "SE",
+        "station_id": 71380,
+        "target_elevation_m": null,
+        "utc_offset": 1,
+        "year": 2021
+      },
+      "existing_cache": "/Users/ssanjay/GitHub/epsm_workflows/output/archetype-pilot-mf-se02-f-2026-09-30/weather/sources/2021/raw-cache"
+    },
+    {
+      "site_id": "1480",
+      "configuration": {
+        "cache_ttl": null,
+        "city": "Unknown",
+        "country": "SWE",
+        "latitude": 57.7089,
+        "longitude": 11.9746,
+        "max_workers": 8,
+        "radiation_station_auto": true,
+        "radiation_station_id": null,
+        "radiation_station_max_distance_km": 50.0,
+        "refresh": false,
+        "region": "SE",
+        "station_id": 72420,
+        "target_elevation_m": null,
+        "utc_offset": 1,
+        "year": 2022
+      },
+      "existing_cache": "/Users/ssanjay/GitHub/epsm_workflows/output/archetype-pilot-mf-se02-f-2026-09-30/weather/sources/2022/raw-cache"
+    },
+    {
+      "site_id": "1480",
+      "configuration": {
+        "cache_ttl": null,
+        "city": "Unknown",
+        "country": "SWE",
+        "latitude": 57.7089,
+        "longitude": 11.9746,
+        "max_workers": 8,
+        "radiation_station_auto": true,
+        "radiation_station_id": null,
+        "radiation_station_max_distance_km": 50.0,
+        "refresh": false,
+        "region": "SE",
+        "station_id": 72420,
+        "target_elevation_m": null,
+        "utc_offset": 1,
+        "year": 2023
+      },
+      "existing_cache": "/Users/ssanjay/GitHub/epsm_workflows/output/archetype-pilot-mf-se02-f-2026-09-30/weather/sources/2023/raw-cache"
+    },
+    {
+      "site_id": "1480",
+      "configuration": {
+        "cache_ttl": null,
+        "city": "Unknown",
+        "country": "SWE",
+        "latitude": 57.7089,
+        "longitude": 11.9746,
+        "max_workers": 8,
+        "radiation_station_auto": true,
+        "radiation_station_id": null,
+        "radiation_station_max_distance_km": 50.0,
+        "refresh": false,
+        "region": "SE",
+        "station_id": 72420,
+        "target_elevation_m": null,
+        "utc_offset": 1,
+        "year": 2024
+      },
+      "existing_cache": "/Users/ssanjay/GitHub/epsm_workflows/output/archetype-pilot-mf-se02-f-2026-09-30/weather/sources/2024/raw-cache"
+    }
+  ]
+}

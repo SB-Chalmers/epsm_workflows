@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "source_study": "../output/stock-national-2026-10-02-v2",
+  "output": "../output/catalogue-diagnosis-national-2026-10-03",
+  "climate_mapping": "evidence/bbr19-climate-zones.json",
+  "energyplus": "/Applications/OpenStudio-3.9.0/EnergyPlus/energyplus",
+  "diagnostic_buildings": 12,
+  "minimum_regression_properties": 50,
+  "outer_folds": 5,
+  "inner_folds": 5,
+  "minimum_branch_properties": 30,
+  "stability_resamples": 20,
+  "bootstrap_resamples": 1000,
+  "seed": 20261003,
+  "simulation_workers": 3,
+  "maximum_weather_station_distance_km": 50,
+  "maximum_weather_interpolated_fraction": 0.05,
+  "ftx_recovery_effectiveness": 0.7,
+  "weather_sources": [
+    {"municipality": "1480", "years": [2017,2018,2019,2020,2021,2022,2023,2024], "directory": "../output/archetype-pilot-mf-se02-f-2026-09-30/weather", "epw_pattern": "weather-{year}.epw", "provenance_pattern": "weather-{year}-provenance.json"},
+    {"municipality": "1485", "years": [2018], "directory": "../output/vera-weather-v2/weather/uddevalla", "epw_pattern": "amy-{year}.epw", "provenance_pattern": "amy-provenance.json"},
+    {"municipality": "1280", "years": [2018], "directory": "../output/vera-weather-v2/weather/malmo", "epw_pattern": "amy-{year}.epw", "provenance_pattern": "amy-provenance.json"},
+    {"municipality": "2480", "years": [2018], "directory": "../output/vera-weather-v2/weather/umea", "epw_pattern": "amy-{year}.epw", "provenance_pattern": "amy-provenance.json"}
+  ]
+}
