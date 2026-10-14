@@ -188,11 +188,14 @@ def test_prepared_cases_resume_and_record_attempts(tmp_path):
         )
 
 
-def test_vera_stages_only_inputs_and_builds_quoted_submission(tmp_path):
+def test_vera_stages_only_inputs_and_builds_quoted_submission(tmp_path, caplog):
+    import logging
     import subprocess
 
     from epsm_workflows.execution import PreparedEvaluation, prepare
     from epsm_workflows.vera import VeraExecutor
+
+    caplog.set_level(logging.INFO, logger="epsm_workflows.vera")
 
     manifest = prepare(
         tmp_path,
@@ -231,6 +234,13 @@ def test_vera_stages_only_inputs_and_builds_quoted_submission(tmp_path):
     assert "$SLURM_ARRAY_TASK_ID" in submission[-1]
     assert "--array=0" in submission[-1]
     assert "'/scratch/my study'" in submission[-1]
+    assert {record.epsm_event for record in caplog.records} >= {
+        "study.staging.completed",
+        "study.submission.completed",
+    }
+    assert all(
+        record.epsm_context["study_id"] == manifest["id"] for record in caplog.records
+    )
 
 
 def test_prepared_assets_are_portable_and_checksum_verified(tmp_path):

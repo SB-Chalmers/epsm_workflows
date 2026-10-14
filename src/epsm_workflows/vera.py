@@ -7,6 +7,7 @@ supplies the account, remote path and an environment with the pinned packages.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import shlex
@@ -15,8 +16,11 @@ from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
 
+from ._events import event
 from ._inspection import inspection
 from .records import atomic_json, exclusive_lock, read_json
+
+logger = logging.getLogger(__name__)
 
 
 def _array(indices):
@@ -70,6 +74,14 @@ class VeraExecutor:
             raise ValueError("Invalid Python executable")
 
     def _run(self, args):
+        event(
+            logger,
+            "study.transport.started",
+            "Started a remote transport command",
+            context={"worker_id": self.host},
+            details={"transport": args[0]},
+            level=logging.DEBUG,
+        )
         return self.command(args, check=True, text=True, capture_output=True)
 
     def _ssh(self, command):
@@ -126,6 +138,13 @@ class VeraExecutor:
                 str(root / "manifest.json"),
                 f"{self.host}:{remote}/manifest.json",
             ]
+        )
+        event(
+            logger,
+            "study.staging.completed",
+            "Staged prepared inputs on the remote host",
+            context={"study_id": manifest["id"], "worker_id": self.host},
+            details={"remote_directory": remote},
         )
         return {
             "plan_id": manifest["id"],
@@ -214,6 +233,17 @@ class VeraExecutor:
             "remote_directory": self.remote_directory,
         }
         atomic_json(root / "submissions" / f"{job_id}.json", receipt)
+        event(
+            logger,
+            "study.submission.completed",
+            "Submitted the Slurm evaluation array",
+            context={
+                "study_id": manifest["id"],
+                "worker_id": self.host,
+                "slurm_job_id": job_id,
+            },
+            details={"submitted": len(indices)},
+        )
         return receipt
 
     def retrieve(self, directory):
@@ -383,7 +413,15 @@ class VeraExecutor:
                         )
                     ):
                         _write_record(path, result)
-        return status(root)
+        outcome = status(root)
+        event(
+            logger,
+            "study.retrieval.completed",
+            "Retrieved and merged remote evaluation evidence",
+            context={"study_id": manifest["id"], "worker_id": self.host},
+            details={key: value for key, value in outcome.items() if key != "plan_id"},
+        )
+        return outcome
 
     def status(self, job_id):
         if not str(job_id).isdigit():

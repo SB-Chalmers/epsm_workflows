@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import shutil
 import traceback
 from concurrent.futures import ThreadPoolExecutor
@@ -17,8 +18,11 @@ from importlib import import_module
 from pathlib import Path
 from uuid import uuid4
 
+from ._events import event
 from ._inspection import inspection
 from .records import atomic_json, digest, exclusive_lock, json_value, read_json
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -111,6 +115,13 @@ def prepare(
                 _verify_asset(root, asset)
             atomic_json(root / "cases" / f"{index:06d}.json", case)
         atomic_json(path, manifest)
+    event(
+        logger,
+        "study.preparation.completed",
+        "Prepared immutable study cases",
+        context={"study_id": manifest["id"]},
+        details={"cases": len(cases), "directory": str(root)},
+    )
     return manifest
 
 
@@ -243,6 +254,18 @@ def run_case(directory, index, *, retry_failed=False):
         if result_path.exists():
             previous = _read_result(result_path, manifest, index)
             if previous["status"] == "succeeded" or not retry_failed:
+                event(
+                    logger,
+                    "study.case.reused",
+                    "Retained a completed case attempt",
+                    context={
+                        "study_id": manifest["id"],
+                        "case_id": case["id"],
+                        "run_id": previous["id"],
+                    },
+                    details={"status": previous["status"]},
+                    level=logging.DEBUG,
+                )
                 return previous
         attempt_id = uuid4().hex
         attempt = {
@@ -255,6 +278,18 @@ def run_case(directory, index, *, retry_failed=False):
         }
         attempt_path = root / "attempts" / f"{index:06d}" / f"{attempt_id}.json"
         _write_record(attempt_path, attempt)
+        context = {
+            "study_id": manifest["id"],
+            "case_id": case["id"],
+            "run_id": attempt_id,
+        }
+        event(
+            logger,
+            "study.case.started",
+            "Started a prepared case",
+            context=context,
+            details={"index": index},
+        )
         try:
             result = _handler(manifest["handler"])(_payload(root, case, attempt_id))
             attempt.update(status="succeeded", result=json_value(result))
@@ -267,9 +302,26 @@ def run_case(directory, index, *, retry_failed=False):
                     "traceback": traceback.format_exc(),
                 },
             )
+            event(
+                logger,
+                "study.case.failed",
+                "Prepared case failed",
+                context=context,
+                details={"index": index, "error_type": type(error).__name__},
+                level=logging.ERROR,
+                exc_info=True,
+            )
         attempt["finished_at"] = datetime.now(timezone.utc).isoformat()
         _write_record(attempt_path, attempt)
         _write_record(result_path, attempt)
+        if attempt["status"] == "succeeded":
+            event(
+                logger,
+                "study.case.completed",
+                "Completed a prepared case",
+                context=context,
+                details={"index": index, "record": str(result_path)},
+            )
         return attempt
 
 
@@ -324,7 +376,15 @@ def run_local(directory, *, workers=1, retry_failed=False):
                 indices,
             )
         )
-    return status(directory)
+    outcome = status(directory)
+    event(
+        logger,
+        "study.execution.completed",
+        "Finished the local execution batch",
+        context={"study_id": outcome["plan_id"]},
+        details={key: value for key, value in outcome.items() if key != "plan_id"},
+    )
+    return outcome
 
 
 def main(argv=None):

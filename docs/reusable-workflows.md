@@ -106,3 +106,13 @@ Paths saved inside remote results continue to identify their original remote loc
 The remote Python environment must contain the pinned packages and engine. Offline
 tests verify commands, quoting, input transport and resume; they are not live Vera
 or Slurm execution evidence.
+
+## Execution events
+
+Search, preparation, case execution and Vera operations emit ordinary Python log
+records under `epsm_workflows`. Records carry `epsm_event`, `epsm_context` and
+`epsm_details`. Context includes study/case/attempt identifiers and remote worker or
+Slurm identifiers when available. A handled case failure emits one traceback at the
+executor and remains in its attempt record. Events contain counts and safe metadata;
+they do not include case payloads or hourly arrays. The application owns handlers,
+levels, formatting and log retention; importing Workflows configures none of these.

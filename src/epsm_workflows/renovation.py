@@ -7,13 +7,17 @@ energy and carbon calculations belong to the supplied EPSM evaluator.
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
 
+from ._events import event
 from ._inspection import inspection
 from .records import atomic_json, digest, exclusive_lock, json_value, read_json
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -300,6 +304,13 @@ def optimise_renovations(
         "constraint_id": constraint_id,
     }
     identity = digest(config)
+    event(
+        logger,
+        "study.search.started",
+        "Started renovation tree exploration",
+        context={"study_id": identity},
+        details={"budget": budget, "max_depth": max_depth},
+    )
     if evaluator is None:
 
         def evaluator(candidate):
@@ -341,6 +352,7 @@ def optimise_renovations(
                 atomic_json(checkpoint, {**stored, "checksum": digest(stored)})
 
         def evaluate(candidate, identifier, parent, bundle):
+            failed = False
             try:
                 evaluation = evaluator(candidate)
                 data, energy, carbon, reasons = _assessment(evaluation, constraints)
@@ -354,6 +366,16 @@ def optimise_renovations(
                 }
                 energy = carbon = None
                 reasons = (f"evaluation failed: {error}",)
+                failed = True
+                event(
+                    logger,
+                    "study.evaluation.failed",
+                    "Renovation candidate evaluation failed",
+                    context={"study_id": identity, "case_id": identifier},
+                    details={"error_type": type(error).__name__},
+                    level=logging.ERROR,
+                    exc_info=True,
+                )
             node = RenovationNode(
                 identifier,
                 parent.id if parent else None,
@@ -372,6 +394,18 @@ def optimise_renovations(
             known[identifier] = node
             live[identifier] = candidate
             save()
+            if not failed:
+                event(
+                    logger,
+                    "study.evaluation.completed",
+                    "Evaluated a renovation candidate",
+                    context={"study_id": identity, "case_id": identifier},
+                    details={
+                        "feasible": node.feasible,
+                        "depth": node.depth,
+                        "unresolved_findings": len(node.reasons),
+                    },
+                )
             return node
 
         root_id = digest({"search": identity, "root": config["baseline"]})
@@ -415,7 +449,19 @@ def optimise_renovations(
                 evaluate(candidate, identifier, parent, bundle)
             if exhausted:
                 break
-        return RenovationTree(identity, tuple(nodes), tuple(rejected), exhausted)
+        tree = RenovationTree(identity, tuple(nodes), tuple(rejected), exhausted)
+        event(
+            logger,
+            "study.search.completed",
+            "Finished renovation tree exploration",
+            context={"study_id": identity},
+            details={
+                "nodes": len(nodes),
+                "rejected": len(rejected),
+                "exhausted_budget": exhausted,
+            },
+        )
+        return tree
 
     if directory is None:
         return explore()
