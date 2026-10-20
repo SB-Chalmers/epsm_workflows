@@ -83,10 +83,23 @@ environment manifest and an observed worker runtime identity. The identity recor
 Python, installed EPSM package versions and source hashes, selected dependency
 versions and handler source. For the built-in EPSM handler it also records the
 selected EnergyPlus executable/schema or RC implementation. Prepare on a host
-with the selected engine available. Workers
-compare their actual runtime with this identity before execution or resume, and
-each attempt retains its runtime hash. Name repeated design rows so their identities remain distinct.
-An existing prepared plan cannot be changed.
+with the selected engines available. Manifest schema 3 stores a content-keyed
+engine inventory and binds every case ID to its selected engine fingerprint.
+Different executables remain distinct; equal contents share a fingerprint.
+Swapping executables between cases changes those bindings even if the inventory
+still contains the same fingerprints. Runtime records contain no executable paths.
+An explicit executable path remains a constraint in its case payload; omit it and
+configure `ENERGYPLUS_EXE` on each host when installation prefixes differ.
+
+Workers compare their actual runtime before execution or resume, and each attempt
+retains its runtime hash. A local batch verifies the complete plan and runtime once,
+then uses a private, deeply immutable captured manifest. Each selected case, its
+assets and any retained result are checked separately. A file-metadata change
+detector rejects manifest changes during the batch; it is not a cryptographic
+filesystem snapshot. Standalone workers and every new batch verify afresh. There
+is no global fingerprint cache. Keep installed code fixed while a batch runs.
+Name repeated design rows so their identities remain distinct. An existing
+prepared plan cannot be changed.
 
 Declared assets are copied and verified by digest. Payloads use
 `{"$asset": "name"}`; workers resolve references at the local or remote root.
@@ -95,12 +108,24 @@ the engine executable, belong to the configured remote environment.
 
 A handler receives one payload plus an injected `_execution` record containing root,
 case ID and attempt ID. It returns a JSON-compatible result or object with `to_dict()`.
-The built-in handler reconstructs Building, Weather and AssessmentSettings, uses a
-shared energy/LCA cache and writes each attempt's artifacts separately.
+The built-in handler reconstructs Building, Weather, AssessmentSettings and public
+EnergyPlus CompilerSettings, uses a shared energy/LCA cache and writes each
+attempt's artifacts separately. RC accepts the explicitly serialized reduction
+settings through its public API. EnergyPlus settings validation also happens during preparation.
 
 `run_local` skips successful and previously failed cases. `retry_failed=True` retries
 failures explicitly. Interrupted attempts remain recorded; unfinished cases resume.
-Workers lock individual cases.
+Workers lock individual cases. Corrupted or missing frozen assets are plan
+integrity failures: preflight raises before creating any attempts. Ordinary
+evaluator failures retain their error and traceback as retryable attempts.
+
+### Upgrading prepared studies to 0.3.0
+
+Prepared schema 2 is rejected with a request to prepare a new plan. Keep old
+artifacts separately; this release does not migrate, rewrite or resume them.
+Prepare from reviewed physical inputs and the new installed package combination.
+Changed runtime identities invalidate reuse even for previously completed cases.
+Renovation trees retain their existing schema 2 and public APIs are unchanged.
 
 `VeraExecutor.stage` transfers immutable inputs/assets and rejects an incompatible
 remote plan. `submit` reads remote completion and submits unfinished Slurm indices.

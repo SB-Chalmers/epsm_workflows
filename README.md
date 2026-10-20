@@ -70,6 +70,19 @@ must contain the pinned EPSM packages and engine. Offline tests are not live Ver
 See [the reusable workflow guide](docs/reusable-workflows.md) for identities, resumption,
 assessment interpretation and sensitivity assumptions.
 
+## Prepared study format in 0.3.0
+
+New prepared plans use schema 3, with a content-based engine inventory and a binding
+from each case to its selected engine. Multiple EnergyPlus executables are retained
+correctly. EnergyPlus settings survive JSON export as the public typed Core settings.
+Local batches verify their runtime once; standalone workers and later resume calls
+always verify afresh. Individual case inputs, assets and result records remain checked.
+
+Prepare a new plan when upgrading from 0.2.0. Old schema-2 prepared artifacts are
+rejected without being rewritten. Corrupted or missing frozen assets now reject
+preflight before any attempts; ordinary evaluator failures remain recorded and
+retryable. Renovation-tree schema 2 and the public function signatures are unchanged.
+
 ## Archived studies
 
 Existing named studies, fixed campaigns and legacy compatibility imports were
