@@ -6,6 +6,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      development_dependencies:
+        description: Check current dependency main branches on Python 3.13
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -15,13 +20,44 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  combination:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: SB-Chalmers/epsm
+          ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
+          persist-credentials: false
+          ref: main
+          path: .ci/platform
+          sparse-checkout: |
+            /compatibility.json
+            /scripts/compatibility_matrix.py
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - id: matrix
+        env:
+          MATRIX_MODE: ${{ inputs.development_dependencies && 'main' || 'pinned' }}
+        run: |
+          echo "EPSM manifest: $(git -C .ci/platform rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          python .ci/platform/scripts/compatibility_matrix.py \
+            --manifest .ci/platform/compatibility.json --consumer epsm_workflows \
+            --packages epsm_data epsm_core epsm_lca epsm_rc epsm \
+            --manifest-revision "$(git -C .ci/platform rev-parse HEAD)" \
+            --mode "$MATRIX_MODE" >> "$GITHUB_OUTPUT"
   package:
+    name: package (${{ matrix.python }})
+    needs: combination
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      matrix:
-        python: ['3.11', '3.13']
+      matrix: ${{ fromJSON(needs.combination.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -29,35 +65,35 @@ jobs:
           repository: SB-Chalmers/epsm_data
           ssh-key: ${{ secrets.EPSM_DATA_DEPLOY_KEY }}
           persist-credentials: false
-          ref: bc8449402b9e0dbe0ea85ff76c954cf36d209f86
+          ref: ${{ matrix.epsm_data }}
           path: .ci/epsm_data
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_core
           ssh-key: ${{ secrets.EPSM_CORE_DEPLOY_KEY }}
           persist-credentials: false
-          ref: 5f43f1c4bff655acc95812ebbbef66d75e001f3c
+          ref: ${{ matrix.epsm_core }}
           path: .ci/epsm_core
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_lca
           ssh-key: ${{ secrets.EPSM_LCA_DEPLOY_KEY }}
           persist-credentials: false
-          ref: 00141d0500e717b4f18a9d69e158f0af2aae1934
+          ref: ${{ matrix.epsm_lca }}
           path: .ci/epsm_lca
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_rc
           ssh-key: ${{ secrets.EPSM_RC_DEPLOY_KEY }}
           persist-credentials: false
-          ref: e537bee42a4824740a49d4a891af189e08c0fce0
+          ref: ${{ matrix.epsm_rc }}
           path: .ci/epsm_rc
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm
           ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
           persist-credentials: false
-          ref: 5c81c88168cf3e1d70756c3ed6f1c534bfc0592e
+          ref: ${{ matrix.epsm }}
           path: .ci/epsm
       - uses: actions/setup-python@v5
         with:
