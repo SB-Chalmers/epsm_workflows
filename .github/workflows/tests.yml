@@ -1,13 +1,23 @@
 name: Workflows release checks
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   package:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -19,47 +29,67 @@ jobs:
           repository: SB-Chalmers/epsm_data
           ssh-key: ${{ secrets.EPSM_DATA_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ae102d33eda79fd429fb445ec99b32dabcab8024
+          ref: bc8449402b9e0dbe0ea85ff76c954cf36d209f86
           path: .ci/epsm_data
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_core
           ssh-key: ${{ secrets.EPSM_CORE_DEPLOY_KEY }}
           persist-credentials: false
-          ref: 8a7c5abf9228e7e6c3792f1f34490aaffd1f608f
+          ref: 5f43f1c4bff655acc95812ebbbef66d75e001f3c
           path: .ci/epsm_core
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_lca
           ssh-key: ${{ secrets.EPSM_LCA_DEPLOY_KEY }}
           persist-credentials: false
-          ref: f2e646713d20f0480bb245e344f86d45292efcdd
+          ref: 00141d0500e717b4f18a9d69e158f0af2aae1934
           path: .ci/epsm_lca
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm_rc
           ssh-key: ${{ secrets.EPSM_RC_DEPLOY_KEY }}
           persist-credentials: false
-          ref: bc65cb2b5ab866ad9909a39b4b7a412beadf84e5
+          ref: e537bee42a4824740a49d4a891af189e08c0fce0
           path: .ci/epsm_rc
       - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm
           ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
           persist-credentials: false
-          ref: ec32c61acc77915322bb0a82adf8421bbc3b3def
+          ref: 5c81c88168cf3e1d70756c3ed6f1c534bfc0592e
           path: .ci/epsm
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - name: Install coordinated candidates
-        run: python -m pip install build pytest -e .ci/epsm_data -e .ci/epsm_core -e .ci/epsm_lca -e .ci/epsm_rc -e .ci/epsm -e '.[epsm,epc]'
-      - name: Run full workflows suite
-        run: python -m pytest -q
-      - name: Build and check installed wheel
+          cache: pip
+      - name: Build and install coordinated wheels
         run: |
-          python -m build --wheel
-          python -m pip install --no-deps --force-reinstall dist/epsm_workflows-*.whl
+          python -m pip install build pytest
+          for package in epsm_data epsm_core epsm_lca epsm_rc epsm; do
+            python -m build --wheel --outdir .ci/wheels ".ci/$package"
+          done
+          python -m build --wheel --outdir .ci/wheels .
+          python -m pip install .ci/wheels/*.whl
+          python -m pip install 'epsm_workflows[epc]'
           python -m pip check
+      - name: Require installed public imports
+        run: |
           cd /tmp
-          python -c 'from epsm_workflows import PreparedEvaluation, optimise_renovations; import importlib.util; assert importlib.util.find_spec("epsm_workflows.cohorts") is None; print(PreparedEvaluation, optimise_renovations)'
+          python - <<'PYTHON'
+          import importlib
+          import importlib.metadata
+          import importlib.util
+          import json
+          from pathlib import Path
+          for name in ("epsm_workflows", "epsm", "epsm_core", "epsm_rc", "epsm_data", "epsm_lca"):
+              module = importlib.import_module(name)
+              assert "site-packages" in Path(module.__file__).resolve().parts, (name, module.__file__)
+              direct = importlib.metadata.distribution(name).read_text("direct_url.json")
+              assert not direct or not json.loads(direct).get("dir_info", {}).get("editable"), (name, direct)
+          assert importlib.util.find_spec("epsm_workflows.cohorts") is None
+          from epsm_workflows import PreparedEvaluation, optimise_renovations
+          print(PreparedEvaluation, optimise_renovations)
+          PYTHON
+      - name: Run full workflows suite against installed wheels
+        run: python -m pytest -q

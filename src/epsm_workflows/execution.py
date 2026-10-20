@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from importlib import import_module
 from pathlib import Path
+from types import MappingProxyType
 from uuid import uuid4
 
 from ._events import event
@@ -33,8 +34,15 @@ def _runtime_identity(cases, handler):
     """Fingerprint the worker code and selected engine used by prepared cases."""
     packages = {}
     for name in (
-        "epsm_workflows", "epsm", "epsm_core", "epsm_data", "epsm_db",
-        "epsm_lca", "epsm_rc", "epsm_studies", "smhi2epw",
+        "epsm_workflows",
+        "epsm",
+        "epsm_core",
+        "epsm_data",
+        "epsm_db",
+        "epsm_lca",
+        "epsm_rc",
+        "epsm_studies",
+        "smhi2epw",
     ):
         spec = importlib.util.find_spec(name)
         if spec is None or spec.origin is None:
@@ -56,7 +64,8 @@ def _runtime_identity(cases, handler):
         raise ImportError(f"Install the prepared handler module: {module}")
     handler_hash = (
         hashlib.sha256(Path(spec.origin).read_bytes()).hexdigest()
-        if spec.origin and Path(spec.origin).is_file() else None
+        if spec.origin and Path(spec.origin).is_file()
+        else None
     )
     dependencies = {}
     for name in ("numpy", "pandas", "scipy", "pydantic", "shapely", "pvlib", "hplib"):
@@ -64,39 +73,53 @@ def _runtime_identity(cases, handler):
             dependencies[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
             dependencies[name] = None
-    engines = {}
+    engines, case_engines, inspected = {}, {}, {}
     if handler == "epsm_workflows.integration:evaluate":
+        from .integration import _simulation_options
+
         for case in cases:
-            simulation = case["payload"].get("simulation", {})
+            simulation = _simulation_options(case["payload"].get("simulation", {}))
             engine = simulation.get("engine", "energyplus")
             if engine == "energyplus":
                 from epsm_core.compiler import EnergyPlusCompiler
 
-                compiler = EnergyPlusCompiler(
-                    simulation.get("energyplus"), settings=simulation.get("settings")
-                )
-                engines[engine] = {
-                    "executable_sha256": compiler.engine_hash,
-                    "schema_sha256": compiler.schema_hash,
-                    "version": compiler.version,
-                }
+                selection = simulation.get("energyplus")
+                if selection not in inspected:
+                    compiler = EnergyPlusCompiler(
+                        selection, settings=simulation.get("settings")
+                    )
+                    inspected[selection] = {
+                        "engine": engine,
+                        "executable_sha256": compiler.engine_hash,
+                        "schema_sha256": compiler.schema_hash,
+                        "version": compiler.version,
+                    }
+                fingerprint = inspected[selection]
             elif engine == "epsm_rc":
-                engines[engine] = packages.get("epsm_rc")
+                if "epsm_rc" not in packages:
+                    raise ImportError("Install epsm_rc before preparing RC evaluations")
+                fingerprint = {"engine": engine, "implementation": packages["epsm_rc"]}
             else:
                 raise ValueError(f"Unsupported prepared engine: {engine}")
+            identity = digest(fingerprint)
+            engines[identity] = fingerprint
+            case_engines[case["id"]] = identity
     return {
         "python": platform.python_version(),
         "packages": packages,
         "dependencies": dependencies,
         "handler_sha256": handler_hash,
-        "engines": engines,
+        "engines": dict(sorted(engines.items())),
+        "case_engines": dict(sorted(case_engines.items())),
     }
 
 
 def _verify_runtime(manifest, cases):
     expected = manifest.get("runtime")
     if expected is None:
-        raise ValueError("Prepared plan has no worker runtime identity; prepare a new plan")
+        raise ValueError(
+            "Prepared plan has no worker runtime identity; prepare a new plan"
+        )
     actual = _runtime_identity(cases, manifest["handler"])
     if actual != expected:
         raise ValueError("Worker runtime differs from the prepared plan")
@@ -171,7 +194,7 @@ def prepare(
             "Prepared cases need nonempty, unique identities; name repeated design rows"
         )
     manifest = {
-        "schema": 2,
+        "schema": 3,
         "handler": handler,
         "environment": json_value(environment or {}),
         "case_ids": [case["id"] for case in cases],
@@ -181,7 +204,7 @@ def prepare(
     with exclusive_lock(root / ".prepare.lock"):
         path = root / "manifest.json"
         if path.exists():
-            if read_json(path) != manifest:
+            if _manifest(root) != manifest:
                 raise ValueError("An existing prepared plan is immutable")
             return manifest
         for name in ("assets", "results", "attempts", "artifacts"):
@@ -206,8 +229,25 @@ def prepare(
 
 def _manifest(root):
     value = read_json(Path(root) / "manifest.json")
+    if value.get("schema") != 3:
+        raise ValueError("Unsupported prepared plan schema; prepare a new plan")
     if value["id"] != digest({key: data for key, data in value.items() if key != "id"}):
         raise ValueError("Prepared manifest has changed")
+    runtime = value.get("runtime", {})
+    engines, bindings = runtime.get("engines"), runtime.get("case_engines")
+    if not isinstance(engines, dict) or not isinstance(bindings, dict):
+        raise ValueError("Prepared engine identities are missing; prepare a new plan")
+    expected = (
+        set(value["case_ids"])
+        if value["handler"] == "epsm_workflows.integration:evaluate"
+        else set()
+    )
+    if (
+        set(bindings) != expected
+        or set(bindings.values()) != set(engines)
+        or any(identity != digest(record) for identity, record in engines.items())
+    ):
+        raise ValueError("Prepared engine bindings are invalid; prepare a new plan")
     return value
 
 
@@ -226,6 +266,11 @@ def _verify_asset(root, asset):
 def _case(root, index):
     root = Path(root)
     manifest = _manifest(root)
+    return manifest, _read_case(root, index, manifest)
+
+
+def _read_case(root, index, manifest):
+    """Check one case against the captured plan without rereading its manifest."""
     if not 0 <= index < len(manifest["case_ids"]):
         raise IndexError(index)
     case = read_json(root / "cases" / f"{index:06d}.json")
@@ -234,7 +279,7 @@ def _case(root, index):
     )
     if case["id"] != identity or identity != manifest["case_ids"][index]:
         raise ValueError(f"Prepared case {index} has changed")
-    return manifest, case
+    return case
 
 
 def _payload(root, case, attempt_id):
@@ -274,7 +319,7 @@ def _write_record(path, value):
     atomic_json(path, {**value, "record_sha256": digest(value)})
 
 
-def _read_attempt(path, manifest, index, *, completed=False):
+def _read_attempt(path, manifest, index, *, completed=False, runtime_sha256=None):
     """Authenticate a retained attempt against its prepared inputs."""
     value = read_json(path)
     checksum = value.pop("record_sha256", None)
@@ -284,7 +329,8 @@ def _read_attempt(path, manifest, index, *, completed=False):
         value.get("plan_id") != manifest["id"]
         or value.get("case_id") != manifest["case_ids"][index]
         or value.get("index") != index
-        or value.get("runtime_sha256") != digest(manifest["runtime"])
+        or value.get("runtime_sha256")
+        != (runtime_sha256 or digest(manifest["runtime"]))
     ):
         raise ValueError("Stored result belongs to different prepared inputs")
     allowed = (
@@ -297,28 +343,80 @@ def _read_attempt(path, manifest, index, *, completed=False):
     return value
 
 
-def _read_result(path, manifest, index):
-    return _read_attempt(path, manifest, index, completed=True)
+def _read_result(path, manifest, index, *, runtime_sha256=None):
+    return _read_attempt(
+        path, manifest, index, completed=True, runtime_sha256=runtime_sha256
+    )
 
 
 def validate_plan(directory):
     """Verify prepared identities and file contents before moving/executing a plan."""
-    manifest = _manifest(directory)
+    return _plan_inputs(Path(directory))[0]
+
+
+def _plan_inputs(root):
+    manifest = _manifest(root)
+    cases, checked_assets = [], set()
     for index in range(len(manifest["case_ids"])):
-        _, case = _case(directory, index)
+        case = _read_case(root, index, manifest)
+        cases.append(case)
         for asset in case["assets"].values():
-            _verify_asset(directory, asset)
-    return manifest
+            identity = (asset["path"], asset["sha256"])
+            if identity not in checked_assets:
+                _verify_asset(root, asset)
+                checked_assets.add(identity)
+    return manifest, cases
+
+
+def _freeze(value):
+    if isinstance(value, dict):
+        return MappingProxyType({key: _freeze(data) for key, data in value.items()})
+    if isinstance(value, list):
+        return tuple(_freeze(data) for data in value)
+    return value
+
+
+def _manifest_stamp(root):
+    stat = (root / "manifest.json").stat()
+    return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns
+
+
+@dataclass(frozen=True)
+class _VerifiedPlan:
+    manifest: object
+    runtime_sha256: str
+    stamp: tuple
+
+
+def _verified_plan(root):
+    stamp = _manifest_stamp(root)
+    manifest, cases = _plan_inputs(root)
+    runtime = _verify_runtime(manifest, cases)
+    if _manifest_stamp(root) != stamp:
+        raise ValueError("Prepared manifest changed during verification")
+    return _VerifiedPlan(_freeze(manifest), runtime, stamp)
+
+
+def _unchanged_manifest(root, verified):
+    # This detects file changes within a batch; fresh calls always verify the
+    # complete manifest and runtime. The captured plan itself is deeply frozen.
+    if _manifest_stamp(root) != verified.stamp:
+        raise ValueError("Prepared manifest changed during the local batch")
 
 
 def read_results(directory, *, require_success=True):
     """Read verified results in prepared row order; incomplete matrices are rejected."""
     root = Path(directory)
     manifest = _manifest(root)
+    runtime_sha256 = digest(manifest["runtime"])
     rows = []
     for index in range(len(manifest["case_ids"])):
         path = root / "results" / f"{index:06d}.json"
-        row = _read_result(path, manifest, index) if path.exists() else None
+        row = (
+            _read_result(path, manifest, index, runtime_sha256=runtime_sha256)
+            if path.exists()
+            else None
+        )
         if require_success and (row is None or row["status"] != "succeeded"):
             raise ValueError(f"Prepared case {index} has no successful result")
         rows.append(row)
@@ -328,14 +426,24 @@ def read_results(directory, *, require_success=True):
 def run_case(directory, index, *, retry_failed=False):
     """Run one immutable case at most once successfully; retain every attempt."""
     root = Path(directory)
-    manifest, case = _case(root, index)
-    runtime_sha256 = _verify_runtime(manifest, [
-        _case(root, row)[1] for row in range(len(manifest["case_ids"]))
-    ])
+    return _run_case(root, index, _verified_plan(root), retry_failed=retry_failed)
+
+
+def _run_case(root, index, verified, *, retry_failed):
+    manifest, runtime_sha256 = verified.manifest, verified.runtime_sha256
     result_path = root / "results" / f"{index:06d}.json"
     with exclusive_lock(root / "locks" / f"{index:06d}.lock"):
+        _unchanged_manifest(root, verified)
+        case = _read_case(root, index, manifest)
+        for asset in case["assets"].values():
+            _verify_asset(root, asset)
         if result_path.exists():
-            previous = _read_result(result_path, manifest, index)
+            previous = _read_result(
+                path=result_path,
+                manifest=manifest,
+                index=index,
+                runtime_sha256=runtime_sha256,
+            )
             if previous["status"] == "succeeded" or not retry_failed:
                 event(
                     logger,
@@ -412,15 +520,18 @@ def run_case(directory, index, *, retry_failed=False):
 def pending(directory, *, retry_failed=False):
     """Return unfinished, currently unlocked case indices."""
     root = Path(directory)
-    manifest = _manifest(root)
-    _verify_runtime(manifest, [
-        _case(root, row)[1] for row in range(len(manifest["case_ids"]))
-    ])
+    return _pending(root, _verified_plan(root), retry_failed=retry_failed)
+
+
+def _pending(root, verified, *, retry_failed):
+    manifest = verified.manifest
     indices = []
     for index in range(len(manifest["case_ids"])):
         path = root / "results" / f"{index:06d}.json"
         if path.exists():
-            stored = _read_result(path, manifest, index)
+            stored = _read_result(
+                path, manifest, index, runtime_sha256=verified.runtime_sha256
+            )
             if stored["status"] == "succeeded" or not retry_failed:
                 continue
         try:
@@ -428,12 +539,14 @@ def pending(directory, *, retry_failed=False):
                 indices.append(index)
         except RuntimeError:
             continue
+    _unchanged_manifest(root, verified)
     return indices
 
 
 def status(directory):
     root = Path(directory)
     manifest = _manifest(root)
+    runtime_sha256 = digest(manifest["runtime"])
     counts = {
         "plan_id": manifest["id"],
         "total": len(manifest["case_ids"]),
@@ -444,7 +557,7 @@ def status(directory):
     for index in range(counts["total"]):
         path = root / "results" / f"{index:06d}.json"
         if path.exists():
-            stored = _read_result(path, manifest, index)
+            stored = _read_result(path, manifest, index, runtime_sha256=runtime_sha256)
             counts[stored["status"]] += 1
         else:
             counts["unfinished"] += 1
@@ -455,11 +568,15 @@ def run_local(directory, *, workers=1, retry_failed=False):
     """Resume pending cases locally; external simulators may run concurrently."""
     if not isinstance(workers, int) or workers < 1:
         raise ValueError("workers must be a positive integer")
-    indices = pending(directory, retry_failed=retry_failed)
+    root = Path(directory)
+    verified = _verified_plan(root)
+    indices = _pending(root, verified, retry_failed=retry_failed)
     with ThreadPoolExecutor(max_workers=workers) as pool:
         list(
             pool.map(
-                lambda index: run_case(directory, index, retry_failed=retry_failed),
+                lambda index: _run_case(
+                    root, index, verified, retry_failed=retry_failed
+                ),
                 indices,
             )
         )

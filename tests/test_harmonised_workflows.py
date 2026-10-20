@@ -287,7 +287,9 @@ def test_prepared_assets_are_portable_and_checksum_verified(tmp_path):
     # A different run detects a corrupted copied resource before its evaluator.
     copied = next((local / "assets").glob("*/*.epw"))
     copied.write_text("changed")
-    assert run_local(local)["failed"] == 1
+    with pytest.raises(ValueError, match="Prepared asset changed"):
+        run_local(local)
+    assert not list((local / "attempts").glob("*/*.json"))
 
 
 def test_resume_rejects_tampered_results_and_tree(tmp_path):

@@ -17,7 +17,7 @@ from epsm_workflows.records import digest
 
 
 def test_real_building_branch_lineage_resume_and_computed_objectives(tmp_path):
-    baseline = epsm.Building()
+    baseline = epsm.Building(preset="illustrative-reference")
     window = baseline.construction_set.elements[BuildingElement.WINDOW]
     measures = [
         RenovationMeasure(
@@ -93,6 +93,7 @@ def test_real_rc_and_automatic_lca_renovation_tree(tmp_path):
 
     from epsm import AssessmentSettings, EnvironmentalFactor, Weather
     from epsm_core import DeliverySpec, HeatingDeliverySpec
+    from epsm_rc import RCSettings
 
     path = tmp_path / "synthetic.epw"
     headers = [
@@ -125,7 +126,7 @@ def test_real_rc_and_automatic_lca_renovation_tree(tmp_path):
             row[12] = "300"
             row[20:22] = ["180", "2"]
             stream.write(",".join(row) + "\n")
-    building = epsm.Building()
+    building = epsm.Building(preset="illustrative-reference")
     building.hvac = building.hvac.with_changes(
         delivery=DeliverySpec(
             heating=HeatingDeliverySpec(
@@ -177,7 +178,14 @@ def test_real_rc_and_automatic_lca_renovation_tree(tmp_path):
         weather=Weather.from_epw(path),
         assessment=assessment,
         directory=tmp_path / "tree",
-        evaluation_options={"directory": tmp_path / "engine"},
+        evaluation_options={
+            "directory": tmp_path / "engine",
+            "settings": RCSettings.from_policy(
+                "epsm_rc_5r1c_v1",
+                airflow_policy="sensible_only_unlimited_supply",
+                ground_policy="conductance_multiplier",
+            ),
+        },
     )
     tree = optimise_renovations(building, **options)
     assert len(tree.nodes) == 2

@@ -3,7 +3,21 @@
 Importing the generic Workflows package does not import the facade or engines.
 Only execution of a prepared EPSM case requires the corresponding packages.
 """
+
 from pathlib import Path
+
+
+def _simulation_options(simulation):
+    """Restore typed engine settings from a frozen JSON case without mutation."""
+    options = dict(simulation)
+    if (
+        options.get("engine", "energyplus") == "energyplus"
+        and options.get("settings") is not None
+    ):
+        from epsm_core import CompilerSettings
+
+        options["settings"] = CompilerSettings.model_validate(options["settings"])
+    return options
 
 
 def evaluate(payload):
@@ -11,7 +25,7 @@ def evaluate(payload):
     from epsm import Building, Weather, AssessmentSettings, EvaluationCache
 
     building = Building.from_dict(payload["building"])
-    options = dict(payload.get("simulation", {}))
+    options = _simulation_options(payload.get("simulation", {}))
     weather = options.pop("weather")
     if isinstance(weather, dict):
         weather = Weather.from_dict(weather)
@@ -24,5 +38,8 @@ def evaluate(payload):
     if cache_directory is not None:
         options["cache"] = EvaluationCache(Path(cache_directory))
     if root is not None:
-        options.setdefault("directory", root / "artifacts" / execution["case_id"] / execution["attempt_id"])
+        options.setdefault(
+            "directory",
+            root / "artifacts" / execution["case_id"] / execution["attempt_id"],
+        )
     return building.simulate(weather=weather, **options)
