@@ -70,6 +70,15 @@ must contain the pinned EPSM packages and engine. Offline tests are not live Ver
 See [the reusable workflow guide](docs/reusable-workflows.md) for identities, resumption,
 assessment interpretation and sensitivity assumptions.
 
+## Release 0.3.1 packaging
+
+Version 0.3.1 includes the [MIT license](LICENSE) in its wheel and source archive
+and declares it in distribution metadata. It retains the existing EPSM
+Development contributors notice. The package description, README and repository
+link are included in metadata as well. Scientific behaviour and public function
+signatures are unchanged; prepared plans continue to use schema 3. See the
+[packaging release note](docs/release-0.3.1.md).
+
 ## Prepared study format in 0.3.0
 
 New prepared plans use schema 3, with a content-based engine inventory and a binding
