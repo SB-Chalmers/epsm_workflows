@@ -1,3 +1,3 @@
-"""Development version; source hashes identify individual experiments."""
+"""Package version; prepared inputs also retain implementation identities."""
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

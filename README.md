@@ -8,18 +8,26 @@ records execution. Scientific energy and LCA calculations remain in their packag
 
 ```python
 from epsm_workflows import optimise_renovations
+from epsm_rc import RCSettings
+
+rc_settings = RCSettings.from_policy(
+    "epsm_rc_5r1c_v1",
+    airflow_policy="sensible_only_unlimited_supply",
+    ground_policy="conductance_multiplier",
+)
 
 tree = optimise_renovations(
     building, catalogue=renovation_catalogue,
     max_depth=2, max_bundle_size=2, budget=100,
     engine="epsm_rc", weather=weather, assessment=assessment,
     directory="outputs/renovation-search",
+    evaluation_options={"settings": rc_settings},
 )
 for node in tree.pareto:
     print(node.action_ids, node.energy_kwh, node.carbon_kgco2e)
 ```
 
-Supply an EPSM Building, weather, explicit assessment settings and executable Data
+Supply an authored EPSM Building, weather, explicit assessment settings and executable Data
 renovation choices. Each child applies a bundle to its parent; there are no dates or
 stage slots. Intermediate states remain candidates, and dominated prefixes are still
 expanded. Incomplete energy/carbon objectives are retained but excluded from selection.
@@ -31,7 +39,8 @@ from epsm_workflows import Parameter, latin_hypercube, parametric_cases, prepare
 
 samples = latin_hypercube([Parameter("window_fraction", .15, .35)], 20, seed=42)
 cases = parametric_cases(building, samples, apply_parameters,
-                         engine="epsm_rc", weather=weather, assessment=assessment)
+                         engine="epsm_rc", weather=weather, assessment=assessment,
+                         simulation_options={"settings": rc_settings})
 prepare("outputs/study", cases, environment={"revision": "your-reviewed-revision"})
 run_local("outputs/study", workers=2)
 ```
@@ -60,6 +69,19 @@ must contain the pinned EPSM packages and engine. Offline tests are not live Ver
 
 See [the reusable workflow guide](docs/reusable-workflows.md) for identities, resumption,
 assessment interpretation and sensitivity assumptions.
+
+## Prepared study format in 0.3.0
+
+New prepared plans use schema 3, with a content-based engine inventory and a binding
+from each case to its selected engine. Multiple EnergyPlus executables are retained
+correctly. EnergyPlus settings survive JSON export as the public typed Core settings.
+Local batches verify their runtime once; standalone workers and later resume calls
+always verify afresh. Individual case inputs, assets and result records remain checked.
+
+Prepare a new plan when upgrading from 0.2.0. Old schema-2 prepared artifacts are
+rejected without being rewritten. Corrupted or missing frozen assets now reject
+preflight before any attempts; ordinary evaluator failures remain recorded and
+retryable. Renovation-tree schema 2 and the public function signatures are unchanged.
 
 ## Archived studies
 
