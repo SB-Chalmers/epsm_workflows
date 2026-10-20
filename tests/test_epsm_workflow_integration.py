@@ -89,11 +89,11 @@ def test_real_building_branch_lineage_resume_and_computed_objectives(tmp_path):
 
 def test_real_rc_and_automatic_lca_renovation_tree(tmp_path):
     pytest.importorskip("epsm_rc")
-    from epsm_rc import RCSettings
     from datetime import datetime, timedelta
 
     from epsm import AssessmentSettings, EnvironmentalFactor, Weather
     from epsm_core import DeliverySpec, HeatingDeliverySpec
+    from epsm_rc import RCSettings
 
     path = tmp_path / "synthetic.epw"
     headers = [
