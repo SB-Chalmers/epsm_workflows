@@ -66,8 +66,10 @@ def _runtime_identity(cases, handler):
             dependencies[name] = None
     engines = {}
     if handler == "epsm_workflows.integration:evaluate":
+        from .integration import _simulation_options
+
         for case in cases:
-            simulation = case["payload"].get("simulation", {})
+            simulation = _simulation_options(case["payload"].get("simulation", {}))
             engine = simulation.get("engine", "energyplus")
             if engine == "energyplus":
                 from epsm_core.compiler import EnergyPlusCompiler
