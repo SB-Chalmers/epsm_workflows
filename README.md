@@ -1,4 +1,15 @@
-# epsm_workflows
+# EPSM Workflows
+
+<!-- EPSM introduction: Pocket CAD -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/epsm_workflows-dark.png">
+  <img src="docs/assets/brand/epsm_workflows.png" width="64" height="64" alt="EPSM Workflows — connected simulation steps">
+</picture>
+
+Design experiments, explore renovation alternatives and run repeatable EPSM jobs locally or on a computing cluster.
+
+[Explore the EPSM platform](https://github.com/SB-Chalmers/epsm/blob/main/docs/platform.md)
+<!-- /EPSM introduction -->
 
 Reusable parametric designs, global sensitivity, renovation-tree optimisation and
 local/Vera execution for EPSM. Workflows prepares inputs, explores alternatives and
