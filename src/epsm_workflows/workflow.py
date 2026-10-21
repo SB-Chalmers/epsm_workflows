@@ -253,7 +253,9 @@ class WorkflowDefinition(_Definition):
     engines: list[Literal["energyplus", "epsm_rc"]] = Field(
         default_factory=lambda: ["epsm_rc"]
     )
-    engine_settings: dict[str, dict] = Field(default_factory=dict)
+    engine_settings: dict[Literal["energyplus", "epsm_rc"], dict] = Field(
+        default_factory=dict
+    )
     baseline: bool = False
     outputs: list[OutputRequirement] = Field(
         default_factory=lambda: [
@@ -415,12 +417,21 @@ class WorkflowSpec:
     def set(self, binding, value, *, selector=None):
         """Set workflow configuration or one registered physical input explicitly."""
         data = self.to_dict()
+        aliases = {"rc": "epsm_rc", "eplus": "energyplus"}
         if binding == "engines":
-            aliases = {"rc": "epsm_rc", "eplus": "energyplus"}
             return self._replace(engines=[aliases.get(x, x) for x in value])
+        if binding == "engine_settings":
+            if not isinstance(value, dict):
+                raise ValueError("engine_settings requires an engine-keyed mapping")
+            settings = {
+                aliases.get(engine, engine): json_value(options)
+                for engine, options in value.items()
+            }
+            if len(settings) != len(value):
+                raise ValueError("Duplicate engine aliases in engine_settings")
+            return self._replace(engine_settings=settings)
         if binding in {
             "outputs",
-            "engine_settings",
             "baseline",
             "scenarios",
             "weather",

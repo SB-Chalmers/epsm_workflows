@@ -303,6 +303,18 @@ def test_composed_owner_schema_keeps_workflow_container_constraints():
         jsonschema.validate(data, workflow.schema())
 
 
+def test_engine_settings_cannot_silently_ignore_an_unknown_engine():
+    with pytest.raises(ValueError, match="engine_settings|engine"):
+        WorkflowSpec.from_dict({"engine_settings": {"typo-engine": {"settings": {}}}})
+    workflow = WorkflowSpec.template()
+    workflow.set(
+        "engine_settings", {"rc": {"settings": {"policy_version": "explicit"}}}
+    )
+    assert workflow.to_dict()["engine_settings"] == {
+        "epsm_rc": {"settings": {"policy_version": "explicit"}}
+    }
+
+
 @pytest.mark.parametrize(
     "choices", [[20.5, 21.5], [True, 20], [19, 22], [20, float("nan")]]
 )

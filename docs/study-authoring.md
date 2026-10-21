@@ -29,6 +29,8 @@ finite-grid choices; change `sampling.method` to `lhs` or `monte_carlo` when
 appropriate. Categories use finite choices and optional probabilities; they have
 no numerical distance. Integer domains use discrete integer choices. No parameter
 is silently rounded, clipped or resampled. Correlated designs are not supported.
+A design with no parameters yields one fixed candidate. Comparative templates
+require a candidate design or named alternatives.
 
 Scope is `shared`, `per_building`, or `per_group`. Per-group sampling requires
 group identities. Separate seed streams make subject order independent. Baseline
