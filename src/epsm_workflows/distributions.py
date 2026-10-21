@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import math
 from statistics import NormalDist
-from typing import Literal
+from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -20,14 +20,38 @@ class Distribution(BaseModel):
     """Serializable marginal definition; parameter units follow its input."""
 
     model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
-    kind: Literal["uniform", "normal", "weibull", "triangular", "lognormal", "discrete", "categorical"]
+    kind: str
+
+
+class UniformDistribution(Distribution):
+    kind: Literal["uniform"] = "uniform"
+
+
+class NormalDistribution(Distribution):
+    kind: Literal["normal"] = "normal"
     mean: float = 0
     std: float = Field(default=1, gt=0)
+
+
+class WeibullDistribution(Distribution):
+    kind: Literal["weibull"] = "weibull"
     shape: float = Field(default=1, gt=0)
     scale: float = Field(default=1, gt=0)
-    mode: float | None = None
+
+
+class TriangularDistribution(Distribution):
+    kind: Literal["triangular"] = "triangular"
+    mode: float
+
+
+class LognormalDistribution(Distribution):
+    kind: Literal["lognormal"] = "lognormal"
     mean_log: float = 0
     std_log: float = Field(default=1, gt=0)
+
+
+class DiscreteDistribution(Distribution):
+    kind: Literal["discrete"] = "discrete"
     probabilities: tuple[float, ...] | None = None
 
     @model_validator(mode="after")
@@ -39,44 +63,61 @@ class Distribution(BaseModel):
         return self
 
 
+class CategoricalDistribution(DiscreteDistribution):
+    kind: Literal["categorical"] = "categorical"
+
+
+Marginal = Annotated[Union[UniformDistribution, NormalDistribution, WeibullDistribution,
+                          TriangularDistribution, LognormalDistribution,
+                          DiscreteDistribution, CategoricalDistribution], Field(discriminator="kind")]
+
+_DISTRIBUTIONS = {cls.model_fields["kind"].default: cls for cls in (
+    UniformDistribution, NormalDistribution, WeibullDistribution, TriangularDistribution,
+    LognormalDistribution, DiscreteDistribution, CategoricalDistribution)}
+
+
 def uniform() -> Distribution:
     """Uniform probability over the input's finite bounds or choices."""
-    return Distribution(kind="uniform")
+    return UniformDistribution()
 
 
 def normal(*, mean: float = 0, std: float = 1) -> Distribution:
     """Normal marginal, with mean and positive standard deviation in input units."""
-    return Distribution(kind="normal", mean=mean, std=std)
+    return NormalDistribution(mean=mean, std=std)
 
 
 def weibull(*, shape: float = 1, scale: float = 1) -> Distribution:
     """Weibull marginal with positive dimensionless shape and input-unit scale."""
-    return Distribution(kind="weibull", shape=shape, scale=scale)
+    return WeibullDistribution(shape=shape, scale=scale)
 
 
 def triangular(*, mode: float) -> Distribution:
     """Triangular marginal with its mode between the input's declared bounds."""
-    return Distribution(kind="triangular", mode=mode)
+    return TriangularDistribution(mode=mode)
 
 
 def lognormal(*, mean_log: float = 0, std_log: float = 1) -> Distribution:
     """Lognormal marginal parameterized by the mean/std of its natural logarithm."""
-    return Distribution(kind="lognormal", mean_log=mean_log, std_log=std_log)
+    return LognormalDistribution(mean_log=mean_log, std_log=std_log)
 
 
 def discrete(*, probabilities=None) -> Distribution:
     """Discrete integer/choice distribution; omitted weights mean equal probability."""
-    return Distribution(kind="discrete", probabilities=probabilities)
+    return DiscreteDistribution(probabilities=probabilities)
 
 
 def categorical(*, probabilities=None) -> Distribution:
     """Distribution over named choices; categories have no numerical distance."""
-    return Distribution(kind="categorical", probabilities=probabilities)
+    return CategoricalDistribution(probabilities=probabilities)
 
 
 def distribution_from_dict(value) -> Distribution:
     """Validate a saved marginal without sampling it."""
-    return value if isinstance(value, Distribution) else Distribution.model_validate(value)
+    if isinstance(value, Distribution) and type(value) in _DISTRIBUTIONS.values():
+        return value
+    if not isinstance(value, dict) or value.get("kind") not in _DISTRIBUTIONS:
+        raise ValueError("Unsupported distribution kind")
+    return _DISTRIBUTIONS[value["kind"]].model_validate(value)
 
 
 def _cdf(distribution, value):
@@ -134,7 +175,7 @@ def sample_quantile(distribution, probability, *, lower=None, upper=None,
             choices = range(int(lower), int(upper) + 1)
         if not len(choices):
             raise ValueError("choices must not be empty")
-        weights = d.probabilities or (1 / len(choices),) * len(choices)
+        weights = getattr(d, "probabilities", None) or (1 / len(choices),) * len(choices)
         if len(weights) != len(choices):
             raise ValueError("probabilities must match choices")
         cumulative = 0.0

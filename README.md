@@ -4,6 +4,29 @@ Reusable parametric designs, global sensitivity, renovation-tree optimisation an
 local/Vera execution for EPSM. Workflows prepares inputs, explores alternatives and
 records execution. Scientific energy and LCA calculations remain in their packages.
 
+## Study authoring in 0.4.0
+
+```python
+from epsm_workflows import WorkflowSpec
+from epsm_workflows.distributions import normal
+
+workflow = WorkflowSpec.template("monte_carlo", samples=20, seed=7)
+workflow.vary("facade.wwr", min=0.1, max=0.4,
+              distribution=normal(mean=0.25, std=0.05), baseline=0.2)
+workflow.validate()  # reports the subjects and weather still required
+```
+
+Use `add_subject`, `add_weather`, `set` and `add_scenario` to author complete
+experiments. `preview` expands physical states and owner readiness without running
+engines; `prepare` freezes the exact cases for the existing local/Vera executor.
+The same typed definitions generate template JSON, `WorkflowSpec.schema()` and
+input discovery. Studies owns the outer `Study` and permanent results archive.
+Existing callback designs below remain supported.
+
+See [study authoring](docs/study-authoring.md),
+[distributions](docs/distributions.md), [examples](examples/README.md) and the
+[0.4.0 compatibility notes](RELEASE_NOTES.md).
+
 ## Renovation alternatives
 
 ```python
