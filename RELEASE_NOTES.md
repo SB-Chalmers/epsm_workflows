@@ -1,4 +1,4 @@
-# Release 0.4.0 candidate — reusable study authoring
+# Release 0.4.0 — reusable study authoring
 
 Add versioned WorkflowSpec templates, generated schema and owner field discovery, independent distributions, registered physical bindings, portfolio/baseline/engine expansion and preview. Existing prepared schema-3 execution and research callbacks remain supported.
 
