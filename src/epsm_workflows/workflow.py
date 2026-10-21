@@ -14,7 +14,6 @@ import logging
 import math
 import random
 from copy import deepcopy
-from itertools import product
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -593,43 +592,43 @@ class WorkflowSpec:
         )
         return self._replace(scenarios=rows, baseline=True)
 
-    def _rng(self, identity):
+    def _sampling_seed(self, identity):
         key = hashlib.sha256(
             f"{self._definition.sampling.seed}:{identity}".encode()
         ).digest()
-        return random.Random(int.from_bytes(key, "big"))
+        return int.from_bytes(key, "big")
+
+    def _rng(self, identity):
+        return random.Random(self._sampling_seed(identity))
 
     def samples(self, *, scope="shared"):
         """Generate deterministic independent marginals without physical mutation."""
+        from .design import Parameter, grid, latin_hypercube
+
         d = self._definition
         parameters = d.parameters
         if not parameters:
             return [{}]
         if d.sampling.method in {"grid", "explicit"}:
-            columns = []
             for p in parameters:
                 if not p.choices:
                     raise ValueError("Grid/explicit parameters require finite choices")
-                columns.append(p.choices)
-            return [
-                dict(zip((p.binding for p in parameters), row))
-                for row in product(*columns)
-            ]
+            return grid({p.binding: p.choices for p in parameters})
         columns = []
         for p in parameters:
-            rng = self._rng(
-                p.binding + ":" + (scope if p.scope != "shared" else "shared")
-            )
-            probabilities = (
-                [
-                    (i + rng.random()) / d.sampling.samples
-                    for i in range(d.sampling.samples)
-                ]
-                if d.sampling.method == "lhs"
-                else [rng.random() for _ in range(d.sampling.samples)]
-            )
+            identity = p.binding + ":" + (scope if p.scope != "shared" else "shared")
             if d.sampling.method == "lhs":
-                rng.shuffle(probabilities)
+                probabilities = [
+                    row[p.binding]
+                    for row in latin_hypercube(
+                        [Parameter(p.binding, 0, 1)],
+                        d.sampling.samples,
+                        seed=self._sampling_seed(identity),
+                    )
+                ]
+            else:
+                rng = self._rng(identity)
+                probabilities = [rng.random() for _ in range(d.sampling.samples)]
             choices = p.choices
             if p.kind == "integer" and choices is None:
                 choices = list(range(int(p.min), int(p.max) + 1))

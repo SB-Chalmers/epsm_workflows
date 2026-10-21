@@ -40,6 +40,12 @@ Fixed study inputs apply to baseline, sampled cases and named alternatives.
 Named alternatives retain their independent material histories. A comparative
 study requires an explicit candidate design or at least one named alternative.
 
+Workflow sampling adapts the existing public `design.grid` and
+`design.latin_hypercube` methods. LHS supplies one unit-probability parameter per
+registered marginal, then applies that marginal's public quantile transform.
+The existing hash-derived scoped seed and exact row order are retained; the
+adapter does not implement another Cartesian-product or stratification method.
+
 `validate()` checks authoring requirements without I/O. `resolve_inputs()` is an
 explicit acquisition/assembly step for declared sources. It uses public EPSM,
 Core and weather-provider operations, never serialized credentials or callbacks.
