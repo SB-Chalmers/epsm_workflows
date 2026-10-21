@@ -34,6 +34,9 @@ Scope is `shared`, `per_building`, or `per_group`. Per-group sampling requires
 group identities. Separate seed streams make subject order independent. Baseline
 values either inherit each Building's inputs or explicitly override them. Output
 cases retain building/scenario/weather/engine axes and baseline/engine pair IDs.
+Fixed study inputs apply to baseline, sampled cases and named alternatives.
+Named alternatives retain their independent material histories. A comparative
+study requires an explicit candidate design or at least one named alternative.
 
 `validate()` checks authoring requirements without I/O. `resolve_inputs()` is an
 explicit acquisition/assembly step for declared sources. It uses public EPSM,
@@ -42,6 +45,12 @@ Weather batch/morphing requires the version and extras exposing those public
 methods; supplied EPWs remain usable independently. A hypothetical building can
 use real weather. TMY generation and behavioral window-opening remain separate
 unavailable methods, not substitutions for supplied EPW or scheduled airflow.
+Source requests select `synthetic`, `drawn` or portable `record` assembly; weather
+requests select supplied `epw`/`tmy` or `amy_batch`. Generated schema composes
+Core footprint and installed weather-provider location/morphing definitions.
+Provider availability is explicit when optional weather dependencies are absent.
+Source calendar years remain distinct from future climate periods. An authored
+`sampling.correlation` request is retained and explicitly blocks preparation.
 
 `preview()` resolves candidate physical changes and uses EPSM's public preflight;
 it does not run engines. `preview(check_ready=False)` inspects membership only and

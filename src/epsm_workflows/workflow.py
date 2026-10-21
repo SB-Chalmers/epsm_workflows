@@ -15,7 +15,7 @@ import random
 from copy import deepcopy
 from itertools import product
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -34,6 +34,55 @@ class Sampling(_Definition):
     method: Literal["lhs", "monte_carlo", "grid", "explicit"] = "lhs"
     samples: int = Field(default=100, ge=1)
     seed: int = 0
+    correlation: dict | None = None
+
+
+class SyntheticSource(_Definition):
+    kind: Literal["synthetic"]
+    shape: Literal["rectangle", "l_shape", "u_shape"] = "rectangle"
+    dimensions: dict = Field(default_factory=dict)
+    geometry: dict = Field(default_factory=dict)
+
+
+class DrawnSource(_Definition):
+    kind: Literal["drawn"]
+    footprint: dict
+    geometry: dict = Field(default_factory=dict)
+
+
+class RecordSource(_Definition):
+    kind: Literal["record"]
+    record: dict
+    geometry: dict = Field(default_factory=dict)
+
+
+SubjectSource = Annotated[
+    SyntheticSource | DrawnSource | RecordSource, Field(discriminator="kind")
+]
+
+
+class SuppliedWeatherRequest(_Definition):
+    kind: Literal["epw", "tmy"]
+    path: str
+    calendar_year: int | None = None
+    provider: str | None = None
+    source_period: list[int] | None = None
+
+
+class AMYBatchRequest(_Definition):
+    kind: Literal["amy_batch"]
+    provider: Literal["smhi"] = "smhi"
+    years: list[int] = Field(min_length=1)
+    locations: list[dict] = Field(min_length=1)
+    subjects_by_location: dict[str, list[str]] = Field(default_factory=dict)
+    compiler_options: dict | None = None
+    morphing: list[dict] = Field(default_factory=list)
+    options: dict = Field(default_factory=dict)
+
+
+WeatherRequest = Annotated[
+    SuppliedWeatherRequest | AMYBatchRequest, Field(discriminator="kind")
+]
 
 
 class ParameterSpec(_Definition):
@@ -96,7 +145,7 @@ class Subject(_Definition):
     id: str = Field(min_length=1)
     building: dict | None = None
     group: str | None = None
-    source: dict | None = None
+    source: SubjectSource | None = None
     location: dict = Field(default_factory=dict)
 
 
@@ -104,7 +153,7 @@ class WeatherCase(_Definition):
     id: str = Field(min_length=1)
     weather: dict | None = None
     subjects: list[str] | None = None
-    request: dict | None = None
+    request: WeatherRequest | None = None
     metadata: dict = Field(default_factory=dict)
 
 
@@ -112,6 +161,14 @@ class Scenario(_Definition):
     id: str = Field(min_length=1)
     subject: str
     building: dict
+
+    @model_validator(mode="after")
+    def _identity(self):
+        if self.id == "baseline" or self.id.startswith("sample-"):
+            raise ValueError(
+                "baseline and sample- identifiers are reserved for generated cases"
+            )
+        return self
 
 
 class OutputRequirement(_Definition):
@@ -237,6 +294,48 @@ class WorkflowSpec:
             "enum": sorted(registry)
         }
         schema["x-epsm-inputs"] = registry
+        # Acquisition containers belong to Workflows; their payload schemas come
+        # directly from physical/provider owners, without copying their validators.
+        from epsm_core import Footprint
+
+        _embed_schema(
+            schema,
+            "DrawnSource",
+            "footprint",
+            Footprint.model_json_schema(),
+            "CoreFootprint",
+        )
+        try:
+            from smhi2epw import WeatherLocation, MorphConfig
+            from pydantic import TypeAdapter
+        except ImportError:
+            schema["x-epsm-weather-acquisition"] = {
+                "status": "unavailable",
+                "install": "epsm_workflows[weather]",
+            }
+        else:
+            _embed_schema(
+                schema,
+                "AMYBatchRequest",
+                "locations",
+                TypeAdapter(list[WeatherLocation]).json_schema(),
+                "WeatherLocation",
+            )
+            _embed_schema(
+                schema,
+                "AMYBatchRequest",
+                "morphing",
+                TypeAdapter(list[MorphConfig]).json_schema(),
+                "WeatherMorph",
+            )
+            schema["x-epsm-weather-acquisition"] = {
+                "status": "supported",
+                "owner": "smhi2epw",
+            }
+        schema["x-epsm-correlation"] = {
+            "status": "unsupported",
+            "reason": "Only independent marginal sampling is available",
+        }
         return schema
 
     @staticmethod
@@ -278,6 +377,7 @@ class WorkflowSpec:
             "sampling.method",
             "sampling.samples",
             "sampling.seed",
+            "sampling.correlation",
             "execution.workers",
             "execution.executor",
         }:
@@ -286,7 +386,7 @@ class WorkflowSpec:
             return self._replace(**{group: data[group]})
         if binding not in self.capabilities():
             raise ValueError(f"Unknown physical binding: {binding}")
-        from .bindings import canonical_binding
+        from .bindings import canonical_binding, serialize_binding
 
         identity = canonical_binding(binding)
         data["model_inputs"] = {
@@ -295,7 +395,7 @@ class WorkflowSpec:
             if canonical_binding(key) != identity
         }
         data["model_inputs"][binding] = {
-            "value": json_value(value),
+            "value": serialize_binding(binding, value),
             "selector": selector or {},
         }
         data["parameters"] = [
@@ -322,6 +422,8 @@ class WorkflowSpec:
         applies_when=None,
     ):
         """Declare one marginal, retaining its domain, reference and sampling scope."""
+        from .bindings import serialize_binding
+
         if binding not in self.capabilities():
             raise ValueError(f"Unknown physical binding: {binding}")
         if distribution is None:
@@ -332,7 +434,9 @@ class WorkflowSpec:
             binding=binding,
             min=min,
             max=max,
-            choices=choices,
+            choices=[serialize_binding(binding, choice) for choice in choices]
+            if choices is not None
+            else None,
             kind=kind
             or (
                 "categorical"
@@ -343,7 +447,9 @@ class WorkflowSpec:
             ),
             distribution=distribution_from_dict(distribution),
             bounds_policy=bounds_policy,
-            baseline=baseline,
+            baseline=baseline
+            if baseline == "inherit"
+            else serialize_binding(binding, baseline),
             scope=scope,
             selector=selector or {},
             unit=unit or "",
@@ -491,6 +597,18 @@ class WorkflowSpec:
         d = self._definition
         from .bindings import canonical_binding
 
+        if d.sampling.correlation is not None:
+            issue(
+                "unsupported_correlation",
+                "sampling.correlation",
+                "Only independent marginal sampling is available",
+            )
+        if d.template == "comparative" and not d.parameters and not d.scenarios:
+            issue(
+                "missing_candidates",
+                "scenarios",
+                "Declare candidate alternatives or a parameter design",
+            )
         if not d.subjects:
             issue("missing_subjects", "subjects", "Select at least one building")
         for subject in d.subjects:
@@ -652,7 +770,7 @@ class WorkflowSpec:
                 expanded.extend(
                     _resolve_weather_batch(
                         row,
-                        Path(directory) / row["id"],
+                        Path(directory) / ("weather-" + digest(row["id"])[:16]),
                         subject_ids={subject["id"] for subject in subjects},
                     )
                 )
@@ -661,9 +779,13 @@ class WorkflowSpec:
                     "Unsupported weather request; supply a resolved weather artifact"
                 )
         self._replace(subjects=subjects, weather=expanded)
-        event(logger, "study.inputs.resolved", "Resolved declared study inputs",
-              context={"workflow_id": self.id},
-              details={"subjects": len(subjects), "weather": len(expanded)})
+        event(
+            logger,
+            "study.inputs.resolved",
+            "Resolved declared study inputs",
+            context={"workflow_id": self.id},
+            details={"subjects": len(subjects), "weather": len(expanded)},
+        )
         return self
 
     def _expanded(self, *, check_ready):
@@ -760,7 +882,14 @@ class WorkflowSpec:
                         (f"sample-{index:06d}", candidate, values, False)
                     )
                 alternatives.extend(
-                    (s.id, Building.from_dict(s.building), {}, False)
+                    (
+                        s.id,
+                        apply_bindings(
+                            Building.from_dict(s.building), fixed, selectors=selectors
+                        ),
+                        {},
+                        False,
+                    )
                     for s in d.scenarios
                     if s.subject == subject.id
                 )
@@ -855,9 +984,13 @@ class WorkflowSpec:
             "cases": rows,
             "diagnostics": diagnostics,
         }
-        event(logger, "study.preview.completed", "Expanded study preview",
-              context={"workflow_id": self.id},
-              details={"case_count": len(rows), "ready": report["ready"]})
+        event(
+            logger,
+            "study.preview.completed",
+            "Expanded study preview",
+            context={"workflow_id": self.id},
+            details={"case_count": len(rows), "ready": report["ready"]},
+        )
         return report
 
     def prepare(self, directory):
@@ -906,6 +1039,32 @@ def _selected(selector, subject):
     return (not selector.get("subjects") or subject.id in selector["subjects"]) and (
         not selector.get("groups") or subject.group in selector["groups"]
     )
+
+
+def _embed_schema(schema, definition, field, owner_schema, prefix):
+    """Compose an owner JSON Schema with namespaced references in one document."""
+
+    def rebase(value):
+        if isinstance(value, dict):
+            return {
+                key: (
+                    "#/$defs/" + prefix + item.rsplit("/", 1)[-1]
+                    if key == "$ref"
+                    and isinstance(item, str)
+                    and item.startswith("#/$defs/")
+                    else rebase(item)
+                )
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [rebase(item) for item in value]
+        return value
+
+    value = deepcopy(owner_schema)
+    definitions = value.pop("$defs", {})
+    for name, node in definitions.items():
+        schema["$defs"][prefix + name] = rebase(node)
+    schema["$defs"][definition]["properties"][field] = rebase(value)
 
 
 def _condition_order(parameters):

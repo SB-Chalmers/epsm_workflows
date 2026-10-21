@@ -38,6 +38,23 @@ def canonical_binding(binding):
     return ALIASES.get(binding, binding)
 
 
+def serialize_binding(binding, value):
+    """Use owner lossless serializers for catalogue objects, not summary views."""
+    from collections.abc import Mapping
+    from .records import json_value
+
+    if not isinstance(value, Mapping):
+        if canonical_binding(binding) == "envelope.archetype":
+            from epsm_data import archetype_to_dict
+
+            return archetype_to_dict(value)
+        if canonical_binding(binding) == "envelope.construction_set":
+            from epsm_data import construction_set_to_dict
+
+            return construction_set_to_dict(value)
+    return json_value(value)
+
+
 def native_unit(binding):
     """Describe owner-named units; this adapter never converts scientific values."""
     path = canonical_binding(binding)
@@ -158,7 +175,11 @@ def capabilities():
             if depth > 6:
                 return
             value_schema = deepcopy(node)
-            if definitions and "$defs" not in value_schema and "#/$defs/" in json.dumps(node):
+            if (
+                definitions
+                and "$defs" not in value_schema
+                and "#/$defs/" in json.dumps(node)
+            ):
                 value_schema["$defs"] = deepcopy(definitions)
             result[path] = {
                 "status": "supported",
@@ -332,7 +353,17 @@ def apply_bindings(building, values, *, selectors=None):
             "Conflicting whole-object and leaf bindings; apply fixed inputs before variations"
         )
     roots, geometry_dimensions, scalar = {}, {}, {}
-    for binding, value in values.items():
+    # Declarative dictionaries have no operation order. Apply selected catalogue
+    # assumptions first, then construction overrides and explicit physical fields.
+    priority = {"envelope.archetype": 0, "envelope.construction_set": 1}
+    for binding in sorted(
+        values,
+        key=lambda key: (
+            priority.get(canonical_binding(key), 2),
+            canonical_binding(key),
+        ),
+    ):
+        value = values[binding]
         if binding not in registry:
             raise ValueError(f"Unknown physical binding: {binding}")
         if registry[binding]["status"] != "supported":

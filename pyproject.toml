@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
-dependencies = ["epsm_core>=0.8.1,<0.9", "epsm_data>=0.6.0"]
+dependencies = ["epsm_core>=0.8.2,<0.9", "epsm_data>=0.6.0"]
 
 [project.urls]
 Repository = "https://github.com/SB-Chalmers/epsm_workflows"
@@ -18,7 +18,7 @@ Repository = "https://github.com/SB-Chalmers/epsm_workflows"
 [project.optional-dependencies]
 epsm = ["epsm>=0.4.0,<0.5"]
 epc = ["duckdb>=1.5,<2", "pyarrow>=23,<24", "pyproj>=3.6,<4", "shapely>=2.1,<3"]
-weather = ["smhi2epw"]
+weather = ["smhi2epw>=1.3.0,<2"]
 
 [project.scripts]
 epsm-evaluations = "epsm_workflows.execution:main"
