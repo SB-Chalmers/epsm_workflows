@@ -42,4 +42,18 @@ def evaluate(payload):
             "directory",
             root / "artifacts" / execution["case_id"] / execution["attempt_id"],
         )
-    return building.simulate(weather=weather, **options)
+    result = building.simulate(weather=weather, **options)
+    if payload.get("result_storage") == "bundle":
+        if root is None:
+            raise ValueError("Bundle results require prepared execution context")
+        from hashlib import sha256
+        from epsm import validate_outputs
+
+        bundle = root / "artifacts" / execution["case_id"] / execution["attempt_id"] / "bundle"
+        result.save_bundle(bundle)
+        return {"format": "epsm-evaluation-reference/1",
+                "path": bundle.relative_to(root).as_posix(),
+                "manifest_sha256": sha256((bundle / "manifest.json").read_bytes()).hexdigest(),
+                "evaluation_id": result.id,
+                "coverage": validate_outputs(result, payload.get("output_requirements"))}
+    return result
