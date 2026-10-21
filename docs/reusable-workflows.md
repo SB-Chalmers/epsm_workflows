@@ -64,6 +64,12 @@ environments, use an explicitly identified custom evaluator.
 `grid` forms finite Cartesian products. `latin_hypercube` stratifies independent
 uniform parameters with an explicit seed. No paper-specific ranges are supplied.
 
+The versioned `WorkflowSpec` adapter delegates finite designs to `grid` and LHS
+unit-probability designs to `latin_hypercube`, retaining its hash-derived marginal
+and scope seeds before quantile conversion. Its reuse regression checks actual
+rows and calls to these public functions. Neither design algorithm is duplicated
+inside study authoring.
+
 `sensitivity_design(parameters, n, seed=...)` makes independent uniform Monte Carlo
 matrices A/B and one mixed matrix per parameter: `n*(d+2)` evaluations for d inputs.
 `analyse_sensitivity` computes Jansen first/total-order variance indices in that row

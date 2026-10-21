@@ -423,6 +423,64 @@ def read_results(directory, *, require_success=True):
     return tuple(rows)
 
 
+def inspect_plan(directory):
+    """Inspect verified cases/assets without requiring the execution environment.
+
+    This public collection boundary is usable after transport or package updates;
+    running/resuming still verifies the exact observed worker runtime separately.
+    """
+    root = Path(directory).resolve()
+    manifest, cases = _plan_inputs(root)
+    return {"manifest": manifest, "cases": tuple(cases)}
+
+
+def read_attempts(directory):
+    """Return all verified attempts, including interrupted running attempts.
+
+    Order is case index then start time and attempt identity. Collection does
+    not import engines or require the producer's packages to be installed.
+    """
+    root = Path(directory).resolve()
+    manifest = _manifest(root)
+    rows = []
+    for index in range(len(manifest["case_ids"])):
+        for path in sorted((root / "attempts" / f"{index:06d}").glob("*.json")):
+            if not path.resolve().is_relative_to(root):
+                raise ValueError("Attempt artifact must stay inside the prepared directory")
+            rows.append(_read_attempt(path, manifest, index))
+    return tuple(sorted(rows, key=lambda row: (row["index"], row.get("started_at", ""), row["id"])))
+
+
+def cancel(directory):
+    """Request graceful cancellation: active cases finish; no new cases start."""
+    root = Path(directory)
+    manifest = _manifest(root)
+    atomic_json(root / "control.json", {"plan_id": manifest["id"], "cancel_requested": True})
+    event(logger, "study.cancel.requested", "Requested graceful study cancellation",
+          context={"study_id": manifest["id"]})
+    return status(directory)
+
+
+def resume(directory):
+    """Explicitly clear cancellation while preserving all cases and attempts."""
+    root = Path(directory)
+    manifest = _manifest(root)
+    (root / "control.json").unlink(missing_ok=True)
+    event(logger, "study.resume.requested", "Enabled study dispatch",
+          context={"study_id": manifest["id"]})
+    return status(directory)
+
+
+def _cancel_requested(root, manifest):
+    path = root / "control.json"
+    if not path.exists():
+        return False
+    control = read_json(path)
+    if control.get("plan_id") != manifest["id"]:
+        raise ValueError("Cancellation belongs to a different prepared plan")
+    return bool(control.get("cancel_requested"))
+
+
 def run_case(directory, index, *, retry_failed=False):
     """Run one immutable case at most once successfully; retain every attempt."""
     root = Path(directory)
@@ -434,6 +492,8 @@ def _run_case(root, index, verified, *, retry_failed):
     result_path = root / "results" / f"{index:06d}.json"
     with exclusive_lock(root / "locks" / f"{index:06d}.lock"):
         _unchanged_manifest(root, verified)
+        if _cancel_requested(root, manifest):
+            return None
         case = _read_case(root, index, manifest)
         for asset in case["assets"].values():
             _verify_asset(root, asset)
@@ -561,6 +621,8 @@ def status(directory):
             counts[stored["status"]] += 1
         else:
             counts["unfinished"] += 1
+    if _cancel_requested(root, manifest):
+        counts["cancel_requested"] = True
     return counts
 
 
@@ -592,14 +654,29 @@ def run_local(directory, *, workers=1, retry_failed=False):
 
 
 def main(argv=None):
+    import sys
+    from .authoring_cli import COMMANDS
+
+    selected = list(sys.argv[1:] if argv is None else argv)
+    if selected and selected[0] in COMMANDS:
+        from .authoring_cli import main as authoring_main
+
+        return authoring_main(selected)
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("run", "status", "pending"))
+    parser.add_argument("command", choices=("run", "status", "pending", "cancel", "resume", "verify"))
     parser.add_argument("directory")
     parser.add_argument("--index", type=int)
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--retry-failed", action="store_true")
     args = parser.parse_args(argv)
-    if args.command == "pending":
+    if args.command == "cancel":
+        value = cancel(args.directory)
+    elif args.command == "resume":
+        value = resume(args.directory)
+    elif args.command == "verify":
+        checked = inspect_plan(args.directory)
+        value = {"plan_id": checked["manifest"]["id"], "cases": len(checked["cases"]), "valid": True}
+    elif args.command == "pending":
         value = pending(args.directory, retry_failed=args.retry_failed)
     elif args.command == "status":
         value = status(args.directory)
