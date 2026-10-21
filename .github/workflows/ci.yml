@@ -1,0 +1,61 @@
+name: Development checks
+'on':
+  pull_request:
+    branches:
+    - dev
+    - main
+  workflow_dispatch: null
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+      with:
+        repository: SB-Chalmers/epsm
+        ref: main
+        path: .ci/platform
+        ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
+        persist-credentials: false
+        sparse-checkout: /compatibility.json
+        sparse-checkout-cone-mode: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    - name: Read supported dependency revisions
+      id: pins
+      run: |
+        python - <<'PYTHON' >> "$GITHUB_OUTPUT"
+        import json
+        from pathlib import Path
+        packages = json.loads(Path('.ci/platform/compatibility.json').read_text())['packages']
+        for name in ['epsm_data', 'epsm_core']:
+            print(name + '=' + packages[name]['revision'])
+        PYTHON
+    - uses: actions/checkout@v4
+      with:
+        repository: SB-Chalmers/epsm_data
+        ref: ${{ steps.pins.outputs.epsm_data }}
+        path: .ci/epsm_data
+        ssh-key: ${{ secrets.EPSM_DATA_DEPLOY_KEY }}
+        persist-credentials: false
+    - uses: actions/checkout@v4
+      with:
+        repository: SB-Chalmers/epsm_core
+        ref: ${{ steps.pins.outputs.epsm_core }}
+        path: .ci/epsm_core
+        ssh-key: ${{ secrets.EPSM_CORE_DEPLOY_KEY }}
+        persist-credentials: false
+    - name: Install development prerequisites
+      run: python -m pip install build pytest jsonschema .ci/epsm_data .ci/epsm_core .
+    - name: Run offline development checks
+      run: |
+        python -m pytest -q
+        python -m build --wheel
