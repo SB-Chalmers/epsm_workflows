@@ -11,6 +11,10 @@ on:
         description: Check current dependency main branches on Python 3.13
         type: boolean
         default: false
+      candidate_manifest_revision:
+        description: Immutable EPSM SHA containing compatibility-candidate.json; empty uses supported pins
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -27,14 +31,16 @@ jobs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: SB-Chalmers/epsm
           ssh-key: ${{ secrets.EPSM_REPO_DEPLOY_KEY }}
           persist-credentials: false
-          ref: main
+          ref: ${{ inputs.candidate_manifest_revision || 'main' }}
           path: .ci/platform
           sparse-checkout: |
             /compatibility.json
+            /compatibility-candidate.json
             /scripts/compatibility_matrix.py
           sparse-checkout-cone-mode: false
       - uses: actions/setup-python@v5
@@ -43,13 +49,19 @@ jobs:
       - id: matrix
         env:
           MATRIX_MODE: ${{ inputs.development_dependencies && 'main' || 'pinned' }}
+          CANDIDATE_REVISION: ${{ inputs.candidate_manifest_revision }}
+          PLATFORM_MANIFEST: ${{ inputs.candidate_manifest_revision && '.ci/platform/compatibility-candidate.json' || '.ci/platform/compatibility.json' }}
         run: |
           echo "EPSM manifest: $(git -C .ci/platform rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          candidate_args=()
+          if [[ -n "$CANDIDATE_REVISION" ]]; then
+            candidate_args=(--candidate-revision "$CANDIDATE_REVISION" --consumer-revision "$(git rev-parse HEAD)")
+          fi
           python .ci/platform/scripts/compatibility_matrix.py \
-            --manifest .ci/platform/compatibility.json --consumer epsm_workflows \
-            --packages epsm_data epsm_core epsm_lca epsm_rc epsm \
+            --manifest "$PLATFORM_MANIFEST" --consumer epsm_workflows \
+            --packages epsm_data epsm_core epsm_lca epsm_rc epsm smhi2epw \
             --manifest-revision "$(git -C .ci/platform rev-parse HEAD)" \
-            --mode "$MATRIX_MODE" >> "$GITHUB_OUTPUT"
+            --mode "$MATRIX_MODE" "${candidate_args[@]}" >> "$GITHUB_OUTPUT"
   package:
     name: package (${{ matrix.python }})
     needs: combination
@@ -95,6 +107,11 @@ jobs:
           persist-credentials: false
           ref: ${{ matrix.epsm }}
           path: .ci/epsm
+      - uses: actions/checkout@v4
+        with:
+          repository: SB-Chalmers/smhi2epw
+          ref: ${{ matrix.smhi2epw }}
+          path: .ci/smhi2epw
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
@@ -102,12 +119,12 @@ jobs:
       - name: Build and install coordinated wheels
         run: |
           python -m pip install build pytest
-          for package in epsm_data epsm_core epsm_lca epsm_rc epsm; do
+          for package in epsm_data epsm_core epsm_lca epsm_rc epsm smhi2epw; do
             python -m build --wheel --outdir .ci/wheels ".ci/$package"
           done
           python -m build --wheel --outdir .ci/wheels .
           python -m pip install .ci/wheels/*.whl
-          python -m pip install 'epsm_workflows[epc]'
+          python -m pip install 'epsm_workflows[epc,epsm,weather]'
           python -m pip check
       - name: Require installed public imports
         run: |
