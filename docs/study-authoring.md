@@ -59,6 +59,11 @@ freezes schema-3 cases through the existing executor. All defined physical value
 weather bytes, settings, requested outputs and pairing metadata are retained.
 Changing a draft never rewrites a prepared plan.
 
+`ParameterSpec`, `OutputRequirement` and distribution objects print bounded
+metadata without exposing choice payloads or full probability vectors. Their
+explicit `summary()` methods return detached loaded settings; inspection performs
+no acquisition or simulation and does not alter the saved study definition.
+
 Configure both engines with `set("engines", ["epsm_rc", "energyplus"])` and set
 their explicit settings with `set("engine_settings", {...})`. Supported common
 energy coverage is heating and fans; optional whole-building outputs must not be

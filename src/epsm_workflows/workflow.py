@@ -20,9 +20,9 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from ._events import event
 from .distributions import Marginal, distribution_from_dict, sample_quantile, uniform
 from .records import atomic_json, digest, json_value
-from ._events import event
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +101,24 @@ class ParameterSpec(_Definition):
     scope: Literal["shared", "per_building", "per_group"] = "shared"
     selector: dict[str, Any] = Field(default_factory=dict)
     applies_when: dict[str, Any] = Field(default_factory=dict)
+
+    def __repr__(self):
+        from ._inspection import inspection
+
+        return inspection(
+            type(self).__name__,
+            binding=self.binding,
+            kind=self.kind,
+            choices=len(self.choices) if self.choices is not None else 0,
+            scope=self.scope,
+            unit=self.unit,
+        )
+
+    __str__ = __repr__
+
+    def summary(self):
+        """Inspect detached loaded domain, assumptions and selector metadata."""
+        return self.model_dump(mode="json")
 
     @model_validator(mode="after")
     def _domain(self):
@@ -195,6 +213,24 @@ class OutputRequirement(_Definition):
     required: bool = True
     level: Literal["building", "zone"] = "building"
     unit: str | None = None
+
+    def __repr__(self):
+        from ._inspection import inspection
+
+        return inspection(
+            type(self).__name__,
+            name=self.name,
+            resolution=self.resolution,
+            required=self.required,
+            level=self.level,
+            unit=self.unit,
+        )
+
+    __str__ = __repr__
+
+    def summary(self):
+        """Inspect the declared output boundary using detached loaded metadata."""
+        return self.model_dump(mode="json")
 
 
 class ExecutionSettings(_Definition):
@@ -324,8 +360,8 @@ class WorkflowSpec:
             "CoreFootprint",
         )
         try:
-            from smhi2epw import WeatherLocation, MorphConfig
             from pydantic import TypeAdapter
+            from smhi2epw import MorphConfig, WeatherLocation
         except ImportError:
             schema["x-epsm-weather-acquisition"] = {
                 "status": "unavailable",

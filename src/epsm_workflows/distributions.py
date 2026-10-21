@@ -22,6 +22,22 @@ class Distribution(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
     kind: str
 
+    def __repr__(self):
+        from ._inspection import inspection
+
+        fields = self.model_dump(exclude={"probabilities"})
+        if hasattr(self, "probabilities"):
+            fields["probabilities"] = (
+                len(self.probabilities) if self.probabilities is not None else None
+            )
+        return inspection(type(self).__name__, **fields)
+
+    __str__ = __repr__
+
+    def summary(self):
+        """Inspect detached loaded marginal settings, including explicit weights."""
+        return self.model_dump(mode="json")
+
 
 class UniformDistribution(Distribution):
     kind: Literal["uniform"] = "uniform"
