@@ -283,3 +283,35 @@ def test_weather_acquisition_identifier_cannot_escape_artifact_directory(
     with pytest.raises(RuntimeError, match="No acquisition"):
         workflow.resolve_inputs(directory=tmp_path / "allowed")
     assert observed[0].resolve().is_relative_to((tmp_path / "allowed").resolve())
+
+
+def test_composed_owner_schema_keeps_workflow_container_constraints():
+    import jsonschema
+
+    workflow = WorkflowSpec.template()
+    workflow.add_weather(
+        id="amy",
+        request={
+            "kind": "amy_batch",
+            "years": [2023],
+            "locations": [{"name": "gbg", "station_id": 71420}],
+        },
+    )
+    data = workflow.to_dict()
+    data["weather"][0]["request"]["locations"] = []
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(data, workflow.schema())
+
+
+@pytest.mark.parametrize(
+    "choices", [[20.5, 21.5], [True, 20], [19, 22], [20, float("nan")]]
+)
+def test_explicit_integer_choices_are_integral_finite_and_inside_bounds(choices):
+    with pytest.raises(ValueError, match="integer|finite"):
+        WorkflowSpec.template().vary(
+            "operation.heating_setpoint",
+            kind="integer",
+            min=20,
+            max=21,
+            choices=choices,
+        )

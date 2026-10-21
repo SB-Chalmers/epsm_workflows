@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import math
 import random
 from copy import deepcopy
 from itertools import product
@@ -115,6 +116,23 @@ class ParameterSpec(_Definition):
             )
         if not self.unit:
             object.__setattr__(self, "unit", expected_unit)
+        if self.choices is not None and not self.choices:
+            raise ValueError("choices must be nonempty")
+        if self.kind == "integer" and self.choices is not None:
+            for value in self.choices:
+                if (
+                    isinstance(value, bool)
+                    or not isinstance(value, (int, float))
+                    or not math.isfinite(value)
+                    or int(value) != value
+                    or (self.min is not None and value < self.min)
+                    or (self.max is not None and value > self.max)
+                ):
+                    raise ValueError(
+                        "integer choices must be finite integral numbers inside declared bounds"
+                    )
+        json.dumps(json_value(self.choices), allow_nan=False)
+        json.dumps(json_value(self.baseline), allow_nan=False)
         if self.kind == "categorical":
             if not self.choices or len(
                 {json.dumps(x, sort_keys=True) for x in self.choices}
@@ -1064,7 +1082,7 @@ def _embed_schema(schema, definition, field, owner_schema, prefix):
     definitions = value.pop("$defs", {})
     for name, node in definitions.items():
         schema["$defs"][prefix + name] = rebase(node)
-    schema["$defs"][definition]["properties"][field] = rebase(value)
+    schema["$defs"][definition]["properties"][field].update(rebase(value))
 
 
 def _condition_order(parameters):
