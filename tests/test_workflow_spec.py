@@ -86,8 +86,9 @@ def test_preview_emits_bounded_lifecycle_event(caplog):
 
 
 def test_portfolio_expansion_baselines_and_engines_preserve_original():
-    from epsm import Building, Weather
     from importlib.resources import files
+
+    from epsm import Building, Weather
 
     building = Building(preset="illustrative-reference")
     before = building.snapshot().sha256
@@ -109,6 +110,7 @@ def test_portfolio_expansion_baselines_and_engines_preserve_original():
 
 def test_fixed_physical_binding_and_geometry_selector_are_validated():
     from epsm import Building
+
     from epsm_workflows.bindings import apply_bindings
 
     building = Building(preset="illustrative-reference")
@@ -123,8 +125,9 @@ def test_fixed_physical_binding_and_geometry_selector_are_validated():
 
 
 def test_fixed_study_inputs_apply_to_material_alternatives_too():
-    from epsm import Building, Weather
     from importlib.resources import files
+
+    from epsm import Building, Weather
 
     building = Building(preset="illustrative-reference")
     original = building.to_dict()
@@ -188,6 +191,7 @@ def test_correlated_request_is_represented_but_explicitly_unavailable():
 
 def test_explicit_resolution_uses_public_geometry_and_supplied_weather(tmp_path):
     from importlib.resources import files
+
     from epsm import Building
 
     workflow = WorkflowSpec.template()
@@ -220,6 +224,7 @@ def test_explicit_resolution_uses_public_geometry_and_supplied_weather(tmp_path)
 def test_owner_definitions_and_explicit_overrides_are_order_independent():
     from epsm import Building
     from epsm_data import Archetype, OperatingProfile, archetype_to_dict
+
     from epsm_workflows.bindings import apply_bindings
 
     building = Building(preset="illustrative-reference")
