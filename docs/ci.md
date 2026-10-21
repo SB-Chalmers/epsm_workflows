@@ -15,3 +15,7 @@ Do not retry dependency conflicts or missing credentials unchanged. Fix their
 cause, then rerun only the affected checks. Preserve failing evidence.
 
 See the [shared branch and CI policy](https://github.com/SB-Chalmers/epsm_development/blob/main/docs/branches-and-releases.md).
+
+Workflows development checks cover its protocol, sampling and prepared-execution
+contracts with Core/Data. Full EPSM-backed authoring, weather acquisition, EPC publication and installed
+owner integration remain in full release verification with their database/platform prerequisites.

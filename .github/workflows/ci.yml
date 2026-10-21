@@ -57,5 +57,5 @@ jobs:
       run: python -m pip install build pytest jsonschema .ci/epsm_data .ci/epsm_core .
     - name: Run offline development checks
       run: |
-        python -m pytest -q
+        python -m pytest -q tests/test_distributions.py tests/test_distribution.py tests/test_harmonised_workflows.py tests/test_outcome_collection.py tests/test_prepared_runtime.py tests/test_validation.py tests/test_workflow_events.py tests/test_workflow_inspection.py tests/test_workflow_sampling_reuse.py
         python -m build --wheel
