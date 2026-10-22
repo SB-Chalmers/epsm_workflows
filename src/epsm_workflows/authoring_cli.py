@@ -9,7 +9,7 @@ from pathlib import Path
 from .workflow import WorkflowSpec
 
 
-COMMANDS = {"template", "schema", "capabilities", "preview", "prepare", "resolve"}
+COMMANDS = {"template", "schema", "capabilities", "preview", "describe", "prepare", "resolve"}
 
 
 def main(argv=None):
@@ -35,6 +35,8 @@ def main(argv=None):
         spec = WorkflowSpec.from_dict(json.loads(Path(args.specification).read_text(encoding="utf-8")))
         if args.command == "preview":
             result = spec.preview(check_ready=not args.structural)
+        elif args.command == "describe":
+            result = spec.describe_design(check_ready=not args.structural)
         elif args.command == "prepare":
             if args.output is None:
                 parser.error("prepare needs an explicit --output directory")
