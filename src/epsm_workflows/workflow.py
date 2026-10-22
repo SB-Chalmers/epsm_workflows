@@ -884,7 +884,7 @@ class WorkflowSpec:
             )
             deferred = {key: value for key, value in fixed.items()
                         if key in {"context.synthetic", "envelope.element_u_value"}
-                        or (generates_context and key.startswith("context."))}
+                        or (generates_context and (key == "context" or key.startswith("context.")))}
             try:
                 base = apply_bindings(original, {key: value for key, value in fixed.items() if key not in deferred}, selectors=selectors)
                 references = {

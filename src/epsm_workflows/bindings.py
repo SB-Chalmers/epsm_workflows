@@ -415,11 +415,16 @@ def apply_bindings(building, values, *, selectors=None):
     registry = capabilities()
     candidate = type(building).from_dict(building.to_dict())
     paths = [canonical_binding(binding) for binding in values]
-    context_fields = {path for path in paths if path.startswith("context.") and path != "context.synthetic"}
+    context_fields = {path for path in paths if path == "context" or (
+        path.startswith("context.") and path != "context.synthetic")}
     if "context.synthetic" in paths and context_fields:
         request = values["context.synthetic"]
-        if context_fields != {"context.buildings"} or not isinstance(request, dict) or request.get("retain_existing") is not True:
-            raise ValueError("Conflicting context selectors: synthetic generation replaces context; use retain_existing=True with context.buildings")
+        if context_fields not in ({"context"}, {"context.buildings"}) or not isinstance(request, dict) or request.get("retain_existing") is not True:
+            raise ValueError(
+                "Conflicting context selectors: synthetic generation replaces context; "
+                "use retain_existing=True with context or context.buildings. "
+                "Include other context settings in a complete context record."
+            )
     if len(set(paths)) != len(paths):
         raise ValueError("Duplicate physical binding aliases")
     if any(
@@ -427,6 +432,7 @@ def apply_bindings(building, values, *, selectors=None):
         for left in paths
         for right in paths
         if left != right
+        and (left, right) != ("context", "context.synthetic")
     ):
         raise ValueError(
             "Conflicting whole-object and leaf bindings; apply fixed inputs before variations"

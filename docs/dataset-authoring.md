@@ -24,6 +24,15 @@ workflow.vary("geometry.storeys", choices=[2, 4, 6], kind="integer")
 workflow.set("context.synthetic", {"preset": "rural", "seed": 7, "radius_m": 60})
 ```
 
+When the same workflow supplies a complete `context` record or `context.buildings`,
+generation requires `retain_existing=True`. Otherwise preview reports a conflict
+instead of silently discarding the supplied surroundings. This applies whether
+the complete context or the generation request is fixed or varied. Retaining a
+complete context reuses Core's operation: supplied buildings and
+`simplify_small_caps` remain intact, and earlier generation evidence is retained
+under `supplied_generation`. Put other context settings into a complete record
+rather than mixing independent leaf overrides with generation.
+
 Add complete subjects and weather using the existing public operations before
 previewing. Synthetic context runs after the final physical geometry, including
 sampled changes and reference overrides. Its explicit request accepts Core's
