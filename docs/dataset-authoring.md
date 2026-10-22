@@ -71,6 +71,12 @@ epsm-evaluations describe workflow.json
 epsm-evaluations describe workflow.json --structural
 ```
 
+The CLI's compact report includes `source_sha256`, the digest of the exact
+workflow file bytes it read. An application can match an imported report to its
+exported draft without reproducing scientific identities or validation rules.
+The report does not authorize execution or attach results to an edited draft.
+This transport field leaves the existing full `preview` response unchanged.
+
 These additions introduce no serialized defaults or new workflow format. Existing
 saved definitions and prepared plans keep their identities. Newly authored
 bindings/distribution kinds require a reader with these capabilities; older

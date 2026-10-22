@@ -288,6 +288,7 @@ def capabilities():
     from epsm_core import Building
 
     result["envelope.element_u_value"] = {
+        "title": "Opaque construction U-value target",
         "status": "supported" if hasattr(Building, "assign_element_u_value") else "unsupported",
         "owner": "epsm_core",
         "schema": {"type": "number", "exclusiveMinimum": 0},
@@ -302,11 +303,16 @@ def capabilities():
         }, "required": ["elements", "component", "layer"]},
     }
     result["context.synthetic"] = {
+        "title": "Generated surroundings",
         "status": "supported", "owner": "epsm_core",
         "schema": SyntheticContextRequest.model_json_schema(),
         "description": "Generate context after geometry changes. Replaces current context unless retain_existing is selected.",
         "examples": [{"preset": name, "seed": 0, "radius_m": 100} for name in ("rural", "urban_lowrise_dense", "urban_highrise_dense")],
     }
+    result["geometry.footprint_area_m2"].update(
+        title="Footprint area",
+        description="Scale one building part while preserving footprint shape and floor elevations. This is not the reference floor area used for loads.",
+    )
     for name, entry in result.items():
         if entry["status"] == "supported":
             entry["selectors"] = ["subjects", "groups"] + (
