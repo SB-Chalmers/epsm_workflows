@@ -54,7 +54,7 @@ def test_selected_batch_runs_only_requested_rows_and_verifies_once(tmp_path, mon
     assert len(list((tmp_path / "attempts").glob("*/*.json"))) == 4
 
 
-@pytest.mark.parametrize("indices", [[True], [-1], [5], [1.5], ["1"], [0, 0]])
+@pytest.mark.parametrize("indices", [[True], [-1], [5], [1.5], ["1"], [0, 0], 1])
 def test_invalid_selection_creates_no_attempts(tmp_path, indices):
     plan(tmp_path)
     with pytest.raises(ValueError, match="indices"):
@@ -66,6 +66,30 @@ def test_empty_selection_does_not_dispatch(tmp_path):
     plan(tmp_path)
     assert execution.run_local(tmp_path, indices=[])["unfinished"] == 5
     assert not list((tmp_path / "attempts").glob("*/*.json"))
+
+
+def test_selected_batch_still_rejects_a_changed_runtime(tmp_path, monkeypatch):
+    plan(tmp_path)
+    original = execution._runtime_identity
+    monkeypatch.setattr(
+        execution, "_runtime_identity",
+        lambda cases, handler: {**original(cases, handler), "python": "changed-worker"},
+    )
+    with pytest.raises(ValueError, match="runtime differs"):
+        execution.run_local(tmp_path, indices=[0])
+    assert not list((tmp_path / "attempts").glob("*/*.json"))
+
+
+def test_overlapping_selection_skips_locked_and_completed_cases(tmp_path):
+    from epsm_workflows.records import exclusive_lock
+
+    plan(tmp_path)
+    with exclusive_lock(tmp_path / "locks/000001.lock"):
+        assert execution.run_local(tmp_path, indices=[1, 2])["succeeded"] == 1
+    retained = execution.read_results(tmp_path, require_success=False)[2]["id"]
+    assert execution.run_local(tmp_path, indices=[1, 2])["succeeded"] == 2
+    assert execution.read_results(tmp_path, require_success=False)[2]["id"] == retained
+    assert len(list((tmp_path / "attempts").glob("*/*.json"))) == 2
 
 
 @pytest.mark.parametrize("target", ["case", "asset"])
@@ -159,4 +183,11 @@ def test_cli_invalid_ranges_fail_before_dispatch(tmp_path, options):
     plan(tmp_path)
     with pytest.raises((SystemExit, ValueError)):
         execution.main(["run", str(tmp_path), *options])
+    assert not list((tmp_path / "attempts").glob("*/*.json"))
+
+
+def test_cli_range_is_only_available_for_execution(tmp_path):
+    plan(tmp_path)
+    with pytest.raises(SystemExit):
+        execution.main(["status", str(tmp_path), "--start", "0", "--stop", "2"])
     assert not list((tmp_path / "attempts").glob("*/*.json"))
