@@ -1,10 +1,20 @@
-# epsm_workflows
+# EPSM Workflows
+
+<!-- EPSM introduction: Pocket CAD -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/welcome/epsm_workflows-dark.png">
+  <img src="docs/assets/welcome/epsm_workflows.png" width="160" height="160" alt="EPSM Workflows — Three linked modelling stages; the central stage is active.">
+</picture>
+
+Make a building experiment repeatable. EPSM Workflows helps you sample
+parameters, explore renovation alternatives and execute prepared cases locally
+or through SSH and Slurm on Vera. Energy and climate calculations stay with
+their owning EPSM packages.
+
+**[Explore the EPSM platform →](https://github.com/SB-Chalmers/epsm/blob/main/docs/platform.md)**
+<!-- /EPSM introduction -->
 
 [![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/SB-Chalmers/epsm_workflows/actions/workflows/ci.yml) [![Releases](https://img.shields.io/badge/releases-GitHub-181717?logo=github&logoColor=white)](https://github.com/SB-Chalmers/epsm_workflows/releases) [![Issues](https://img.shields.io/badge/issues-GitHub-181717?logo=github&logoColor=white)](https://github.com/SB-Chalmers/epsm_workflows/issues)
-
-Design repeatable EPSM experiments, sample parameters, explore renovation
-alternatives and execute prepared cases locally or through SSH and Slurm on Vera.
-Energy and climate calculations stay with their owning EPSM packages.
 
 ## Getting started
 
@@ -44,3 +54,25 @@ weather and explicit assessment settings as shown in the workflow guide.
 ## License
 
 [MIT](LICENSE).
+
+## People and support
+
+Developed at Chalmers University of Technology as part of the EPSM research platform.
+
+**Funding**: Swedish Energy Agency (Project ID: P2024-04053)
+
+**Partners**:
+
+- Lindholmen Science Park AB
+- Sinom AB
+- Stiftelsen Chalmers Industriteknik
+
+**Team**:
+
+- **Lead Developer**: Sanjay Somanath
+- **Principal Investigator**: Alexander Hollberg
+- **Contributors**: Yinan Yu, Dag Wästberg
+
+<p align="center">
+  <img src="docs/assets/welcome/logos.png" width="100%" alt="Chalmers University of Technology, Chalmers Industriteknik, Sinom, Lindholmen Science Park and Swedish Energy Agency logos">
+</p>
