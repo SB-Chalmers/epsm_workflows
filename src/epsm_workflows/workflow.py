@@ -882,6 +882,22 @@ class WorkflowSpec:
                 parameter.binding == "context.synthetic" and _selected(parameter.selector, subject)
                 for parameter in d.parameters
             )
+            if generates_context:
+                pending_conditions = [
+                    (parameter.binding, dependency)
+                    for parameter in d.parameters
+                    if _selected(parameter.selector, subject)
+                    for dependency in parameter.applies_when
+                    if dependency == "context" or dependency.startswith("context.")
+                ]
+                if pending_conditions:
+                    for binding, dependency in pending_conditions:
+                        diagnostics.append(_diagnostic(
+                            "unresolved_generated_context_condition", subject.id,
+                            f"Condition {dependency!r} for {binding!r} cannot be evaluated "
+                            "before generated context resolves; remove the condition or split the design.",
+                        ))
+                    continue
             deferred = {key: value for key, value in fixed.items()
                         if key in {"context.synthetic", "envelope.element_u_value"}
                         or (generates_context and (key == "context" or key.startswith("context.")))}

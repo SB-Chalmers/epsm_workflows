@@ -3,6 +3,8 @@
 
 from importlib.resources import files
 
+import pytest
+
 from epsm import Building, Weather
 from epsm_core import ContextBuilding, ContextSpec, Footprint, synthetic_context
 from epsm_workflows import WorkflowSpec
@@ -77,8 +79,6 @@ def test_whole_context_choices_require_explicit_retention_by_fixed_generation():
 
 
 def test_direct_generation_retains_complete_context_only_when_explicit():
-    import pytest
-
     _, building = workflow()
     supplied = context()
     values = {"context": supplied.model_dump(mode="json"),
@@ -89,3 +89,55 @@ def test_direct_generation_retains_complete_context_only_when_explicit():
     changed = apply_bindings(building, values)
     expected = synthetic_context(changed.geometry, "rural", radius_m=25, existing=supplied)
     assert changed.context.model_dump(mode="json") == expected.model_dump(mode="json")
+
+
+@pytest.mark.parametrize("dependency", ["context", "context.simplify_small_caps", "context.generation"])
+def test_context_condition_cannot_read_the_state_before_generation(dependency):
+    experiment, _ = workflow()
+    experiment.set("context", {"simplify_small_caps": False})
+    experiment.vary("context.synthetic", choices=[{
+        "preset": "rural", "radius_m": 25, "retain_existing": True,
+    }])
+    experiment.vary("facade.wwr", min=.1, max=.2,
+                    applies_when={dependency: False})
+    report = experiment.preview(check_ready=False)
+    assert not report["ready"]
+    issue = report["diagnostics"][0]
+    assert issue["code"] == "unresolved_generated_context_condition"
+    assert "before generated context resolves" in issue["message"]
+    assert "remove the condition or split the design" in issue["message"]
+
+
+def test_fixed_context_condition_without_generation_keeps_its_existing_behavior():
+    experiment, _ = workflow()
+    experiment.set("context", {"simplify_small_caps": False})
+    experiment.vary("facade.wwr", min=.1, max=.2,
+                    applies_when={"context.simplify_small_caps": False})
+    report = experiment.preview(check_ready=False)
+    assert report["ready"], report["diagnostics"]
+    assert all("facade.wwr" in row["parameters"] for row in report["cases"])
+
+
+def test_context_condition_gate_respects_subject_selectors():
+    experiment, building = workflow()
+    experiment.add_subject(building, id="two")
+    experiment.set("context.synthetic", {"preset": "rural", "radius_m": 25},
+                   selector={"subjects": ["one"]})
+    experiment.set("context", {"simplify_small_caps": False},
+                   selector={"subjects": ["two"]})
+    experiment.vary("facade.wwr", min=.1, max=.2, selector={"subjects": ["two"]},
+                    applies_when={"context.simplify_small_caps": False})
+    report = experiment.preview(check_ready=False)
+    assert report["ready"], report["diagnostics"]
+    assert all("facade.wwr" in row["parameters"] for row in report["cases"]
+               if row["axes"]["building_id"] == "two")
+
+
+def test_sampled_generation_request_cannot_be_used_as_a_context_condition():
+    experiment, _ = workflow()
+    request = {"preset": "rural", "radius_m": 25}
+    experiment.vary("context.synthetic", choices=[request])
+    experiment.vary("facade.wwr", min=.1, max=.2, applies_when={"context.synthetic": request})
+    report = experiment.preview(check_ready=False)
+    assert not report["ready"]
+    assert report["diagnostics"][0]["code"] == "unresolved_generated_context_condition"

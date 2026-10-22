@@ -33,6 +33,12 @@ complete context reuses Core's operation: supplied buildings and
 under `supplied_generation`. Put other context settings into a complete record
 rather than mixing independent leaf overrides with generation.
 
+On a subject with synthetic generation, applicability conditions cannot depend
+on `context` or `context.*`: that context is resolved after physical variation.
+Preview reports an actionable diagnostic instead of checking an earlier state.
+Remove the condition or split the design. Conditions on fixed physical context
+continue to work when that subject has no generation request.
+
 Add complete subjects and weather using the existing public operations before
 previewing. Synthetic context runs after the final physical geometry, including
 sampled changes and reference overrides. Its explicit request accepts Core's
