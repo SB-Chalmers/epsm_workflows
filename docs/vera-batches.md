@@ -127,3 +127,11 @@ the harness and retained outcomes. It sets no machine-dependent timing threshold
 This measures local preparation and dispatch overhead. It does not measure
 building preparation, numerical engines, weather, remote filesystems or Slurm
 scheduling, and must not be presented as a 60,000-simulation performance test.
+
+The [22 October 2026 verification receipt](verification/2026-10-22-prepared-dispatch.json)
+records the captured source hashes and the 128/512-case observations. With batches
+of 32, full-plan verifications fell from 128 to 4 and from 512 to 16 respectively.
+All cases retained their original identities and expected stub outputs. The
+128-case elapsed time was slightly higher for batching; the 512-case run reduced
+observed dispatch time. These single-run timings are evidence about local
+overhead, not a performance guarantee.
