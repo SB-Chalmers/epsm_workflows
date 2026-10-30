@@ -583,10 +583,11 @@ def pending(directory, *, retry_failed=False):
     return _pending(root, _verified_plan(root), retry_failed=retry_failed)
 
 
-def _pending(root, verified, *, retry_failed):
+def _pending(root, verified, *, retry_failed, indices=None):
     manifest = verified.manifest
-    indices = []
-    for index in range(len(manifest["case_ids"])):
+    selected = _selected_indices(indices, len(manifest["case_ids"]))
+    unfinished = []
+    for index in selected:
         path = root / "results" / f"{index:06d}.json"
         if path.exists():
             stored = _read_result(
@@ -596,11 +597,25 @@ def _pending(root, verified, *, retry_failed):
                 continue
         try:
             with exclusive_lock(root / "locks" / f"{index:06d}.lock"):
-                indices.append(index)
+                unfinished.append(index)
         except RuntimeError:
             continue
     _unchanged_manifest(root, verified)
-    return indices
+    return unfinished
+
+
+def _selected_indices(indices, count):
+    if indices is None:
+        return range(count)
+    try:
+        selected = tuple(indices)
+    except TypeError as error:
+        raise ValueError("indices must contain unique integer case indices") from error
+    if any(type(index) is not int or not 0 <= index < count for index in selected):
+        raise ValueError("indices must contain integer case indices inside the prepared plan")
+    if len(set(selected)) != len(selected):
+        raise ValueError("indices must contain unique case indices")
+    return selected
 
 
 def status(directory):
@@ -626,13 +641,24 @@ def status(directory):
     return counts
 
 
-def run_local(directory, *, workers=1, retry_failed=False):
-    """Resume pending cases locally; external simulators may run concurrently."""
+def run_local(directory, *, workers=1, retry_failed=False, indices=None):
+    """Resume pending cases, optionally restricting dispatch to selected indices.
+
+    ``indices`` is an iterable of unique zero-based case indices. Its order is
+    retained when using one worker. The complete prepared plan and runtime are
+    verified once per invocation; each dispatched case and asset is rechecked.
+    Existing successes and failures follow the ordinary explicit retry rules.
+    The returned counts always describe the complete plan, including cases
+    outside the selected batch. Omitting ``indices`` retains the existing route.
+
+    For example, ``run_local("study", indices=range(0, 32))`` resumes only the
+    first 32 prepared cases without changing their identities or saved inputs.
+    """
     if not isinstance(workers, int) or workers < 1:
         raise ValueError("workers must be a positive integer")
     root = Path(directory)
     verified = _verified_plan(root)
-    indices = _pending(root, verified, retry_failed=retry_failed)
+    indices = _pending(root, verified, retry_failed=retry_failed, indices=indices)
     with ThreadPoolExecutor(max_workers=workers) as pool:
         list(
             pool.map(
@@ -666,9 +692,20 @@ def main(argv=None):
     parser.add_argument("command", choices=("run", "status", "pending", "cancel", "resume", "verify"))
     parser.add_argument("directory")
     parser.add_argument("--index", type=int)
+    parser.add_argument("--start", type=int, help="First case in a bounded run (inclusive)")
+    parser.add_argument("--stop", type=int, help="Last case boundary in a bounded run (exclusive)")
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--retry-failed", action="store_true")
     args = parser.parse_args(argv)
+    indices = None
+    if args.start is not None or args.stop is not None:
+        if args.command != "run" or args.index is not None:
+            parser.error("--start/--stop require run and cannot be combined with --index")
+        if args.start is None or args.stop is None:
+            parser.error("A bounded run needs both --start and --stop")
+        if not 0 <= args.start <= args.stop <= len(_manifest(Path(args.directory))["case_ids"]):
+            parser.error("The --start/--stop range must stay inside the prepared plan")
+        indices = range(args.start, args.stop)
     if args.command == "cancel":
         value = cancel(args.directory)
     elif args.command == "resume":
@@ -684,7 +721,8 @@ def main(argv=None):
         value = run_case(args.directory, args.index, retry_failed=args.retry_failed)
     else:
         value = run_local(
-            args.directory, workers=args.workers, retry_failed=args.retry_failed
+            args.directory, workers=args.workers, retry_failed=args.retry_failed,
+            indices=indices,
         )
     print(json.dumps(value))
     return (

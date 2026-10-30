@@ -22,3 +22,8 @@ Correlated sampling is outside this independent-marginal interface.
 
 Existing numeric `Parameter`, `latin_hypercube` and sensitivity APIs retain their
 current behavior. These definitions support the additive study authoring API.
+
+`log_uniform()` is an opt-in marginal over positive increasing bounds. Equal
+multiplicative intervals have equal probability. It uses the same probability
+streams as other marginals; endpoint arithmetic roundoff stays inside its finite
+bounds. It does not change existing uniform or lognormal distributions.
