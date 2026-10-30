@@ -74,6 +74,29 @@ run_local("outputs/study", workers=2)
 Use `grid` for finite combinations and `sensitivity_design`/`analyse_sensitivity` for
 independent uniform variance-based global sensitivity.
 
+## Comparing with measured EPC heating
+
+`epsm_workflows.validation` puts a model and an EPC on the same terms and scores
+catalogue cohorts by epsm_data's [measured-data contract](https://github.com/SB-Chalmers/epsm_data/blob/main/docs/validation.md).
+
+```python
+from epsm_workflows.validation import (
+    comparison_terms, delivered_heating_estimate, score_cohorts, compare_cohorts,
+)
+
+terms = comparison_terms("multi_family", municipality_code="1485",
+                         apply=("window_airing", "hot_water_circulation"))
+estimate = delivered_heating_estimate(space_heat_kwh, atemp_m2, carrier="heat_pump",
+                                      seasonal_cop=2.75, period_days=365,
+                                      terms_kwh_m2_year=terms)
+```
+
+No term applies unless the study names it: which terms suit which building type is a
+study's accepted result. `score_cohorts` takes each building's modelled/measured ratio
+per renovation state, or `single` for SE.07. `compare_cohorts` applies the acceptance
+rule on one sample and `accepted_on_both` combines two; the sample itself, and whether a
+value stays in its sourced range, stay with the study.
+
 ## Vera
 
 ```python
