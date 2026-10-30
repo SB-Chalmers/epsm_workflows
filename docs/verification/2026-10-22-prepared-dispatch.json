@@ -1,0 +1,232 @@
+{
+  "format": "epsm-prepared-dispatch-verification/1",
+  "date": "2026-10-22",
+  "scope": "Offline owner dispatch verification; not a release, installed-wheel, engine or live Vera qualification",
+  "source_note": "Core and EPSM are committed campaign sources. Workflows and Studies source hashes include authoring work in progress captured into immutable copies; Git heads alone do not identify those complete snapshots. Dispatch implementation is committed at 96b8c50a661ca333b7272f3b137f0f7b839c306f.",
+  "source_snapshot": {
+    "format": "epsm-dispatch-source-snapshot/1",
+    "packages": [
+      {
+        "package": "epsm_workflows",
+        "source": "/private/tmp/epsm-training-platform-20261022/epsm_workflows/src/epsm_workflows",
+        "git_head": "96b8c50a661ca333b7272f3b137f0f7b839c306f",
+        "source_sha256": "bd2494416b0eb1c090ce54591c71acb8da1e59bbb1304f0af4596899ea59d836"
+      },
+      {
+        "package": "epsm",
+        "source": "/private/tmp/epsm-training-platform-20261022/epsm/src/epsm",
+        "git_head": "fef5b23c8af6a0442d7a4b9a50cfde146bce05c1",
+        "source_sha256": "aca3b0b909404d9d0061fc8b5b8451d44de016bbbcd0c262739d30bff2b49cd5"
+      },
+      {
+        "package": "epsm_core",
+        "source": "/private/tmp/epsm-training-platform-20261022/epsm_core/src/epsm_core",
+        "git_head": "b562ff5bd6e17c2bf542cc9e408292b245a391fa",
+        "source_sha256": "72ffd8d3a45832c4a5f7d5a6f2f7ca4a39d15a568b2e6bbf6254986cfdc7292e"
+      },
+      {
+        "package": "epsm_data",
+        "source": "/private/tmp/epsm-owner-audit-c8aj1i5w/epsm_data/src/epsm_data",
+        "git_head": null,
+        "source_sha256": "56ea1181528c8d8ba7b00f9be258f07be1f71a0829054c0effde5049617fcece"
+      },
+      {
+        "package": "epsm_db",
+        "available": false
+      },
+      {
+        "package": "epsm_lca",
+        "source": "/private/tmp/epsm-owner-audit-c8aj1i5w/epsm_lca/src/epsm_lca",
+        "git_head": null,
+        "source_sha256": "6d45825d7c4efdb7d89a1ba50826dead96842e0044fc44c3e7e6f9dd54ac2ab9"
+      },
+      {
+        "package": "epsm_rc",
+        "source": "/private/tmp/epsm-owner-audit-c8aj1i5w/epsm_rc/src/epsm_rc",
+        "git_head": null,
+        "source_sha256": "b8337a56c3b025951ef5357b42b6df9c7de28fa7d51ada150c4aaa14c06b554d"
+      },
+      {
+        "package": "epsm_studies",
+        "source": "/private/tmp/epsm-training-platform-20261022/epsm_studies/src/epsm_studies",
+        "git_head": "c9009ca964b50923fa5eea2df58870118de8ddeb",
+        "source_sha256": "a3cfbceb1397df005999bdd6f91aabdf84193a9df0366e16c3c9df3af5e5227d"
+      },
+      {
+        "package": "smhi2epw",
+        "available": false
+      }
+    ]
+  },
+  "command": "PYTHONPATH=<immutable-copied-owner-src> python benchmark_prepared_execution.py --output <new-directory> --sizes 128 512 --batch-size 32",
+  "checks": {
+    "targeted_execution_vera_runtime_tests_passed": 77,
+    "targeted_tests_skipped": 0,
+    "latest_read_counter_harness_test_passed": 1,
+    "targeted_statement_coverage": {
+      "covered": 549,
+      "total": 634
+    },
+    "targeted_branch_coverage": {
+      "covered": 191,
+      "total": 256
+    },
+    "coverage_scope": "execution.py and vera.py, including existing APIs; not whole-package release coverage"
+  },
+  "measurements": [
+    {
+      "cases": 128,
+      "batch_size": 32,
+      "plan_id": "c2e931d171f75cfd14a5bb6fca66f372872dcfb05f3553a9f9a5e93196b9680d",
+      "preparation_s": 0.12718954200045118,
+      "runtime": {
+        "python": "3.12.3",
+        "packages": {
+          "epsm_workflows": {
+            "version": "0.2.0",
+            "source_sha256": "bd2494416b0eb1c090ce54591c71acb8da1e59bbb1304f0af4596899ea59d836"
+          },
+          "epsm": {
+            "version": "0.2.0",
+            "source_sha256": "aca3b0b909404d9d0061fc8b5b8451d44de016bbbcd0c262739d30bff2b49cd5"
+          },
+          "epsm_core": {
+            "version": "0.3.0",
+            "source_sha256": "72ffd8d3a45832c4a5f7d5a6f2f7ca4a39d15a568b2e6bbf6254986cfdc7292e"
+          },
+          "epsm_data": {
+            "version": "0.5.0",
+            "source_sha256": "56ea1181528c8d8ba7b00f9be258f07be1f71a0829054c0effde5049617fcece"
+          },
+          "epsm_lca": {
+            "version": "0.2.0",
+            "source_sha256": "6d45825d7c4efdb7d89a1ba50826dead96842e0044fc44c3e7e6f9dd54ac2ab9"
+          },
+          "epsm_rc": {
+            "version": "0.4.0",
+            "source_sha256": "b8337a56c3b025951ef5357b42b6df9c7de28fa7d51ada150c4aaa14c06b554d"
+          },
+          "epsm_studies": {
+            "version": "0.2.0",
+            "source_sha256": "a3cfbceb1397df005999bdd6f91aabdf84193a9df0366e16c3c9df3af5e5227d"
+          }
+        },
+        "dependencies": {
+          "numpy": "2.5.4",
+          "pandas": "3.0.6",
+          "scipy": "1.18.1",
+          "pydantic": "2.14.1",
+          "shapely": "2.2.0",
+          "pvlib": "0.16.1",
+          "hplib": null
+        },
+        "handler_sha256": null,
+        "engines": {},
+        "case_engines": {}
+      },
+      "handler": "builtins:dict",
+      "results": [
+        {
+          "mode": "standalone",
+          "duration_s": 4.169048667000425,
+          "full_plan_verifications": 128,
+          "verified_case_rows": 16384,
+          "case_file_reads": 16512,
+          "succeeded": 128,
+          "attempts": 128,
+          "case_identities_match": true
+        },
+        {
+          "mode": "bounded",
+          "duration_s": 4.340236332999666,
+          "full_plan_verifications": 4,
+          "verified_case_rows": 512,
+          "case_file_reads": 640,
+          "succeeded": 128,
+          "attempts": 128,
+          "case_identities_match": true
+        }
+      ]
+    },
+    {
+      "cases": 512,
+      "batch_size": 32,
+      "plan_id": "8e8143ec52a2534b36f3c3771fd6f7fa2871ba01b5110065d122179d27158fdc",
+      "preparation_s": 0.2265912919992843,
+      "runtime": {
+        "python": "3.12.3",
+        "packages": {
+          "epsm_workflows": {
+            "version": "0.2.0",
+            "source_sha256": "bd2494416b0eb1c090ce54591c71acb8da1e59bbb1304f0af4596899ea59d836"
+          },
+          "epsm": {
+            "version": "0.2.0",
+            "source_sha256": "aca3b0b909404d9d0061fc8b5b8451d44de016bbbcd0c262739d30bff2b49cd5"
+          },
+          "epsm_core": {
+            "version": "0.3.0",
+            "source_sha256": "72ffd8d3a45832c4a5f7d5a6f2f7ca4a39d15a568b2e6bbf6254986cfdc7292e"
+          },
+          "epsm_data": {
+            "version": "0.5.0",
+            "source_sha256": "56ea1181528c8d8ba7b00f9be258f07be1f71a0829054c0effde5049617fcece"
+          },
+          "epsm_lca": {
+            "version": "0.2.0",
+            "source_sha256": "6d45825d7c4efdb7d89a1ba50826dead96842e0044fc44c3e7e6f9dd54ac2ab9"
+          },
+          "epsm_rc": {
+            "version": "0.4.0",
+            "source_sha256": "b8337a56c3b025951ef5357b42b6df9c7de28fa7d51ada150c4aaa14c06b554d"
+          },
+          "epsm_studies": {
+            "version": "0.2.0",
+            "source_sha256": "a3cfbceb1397df005999bdd6f91aabdf84193a9df0366e16c3c9df3af5e5227d"
+          }
+        },
+        "dependencies": {
+          "numpy": "2.5.4",
+          "pandas": "3.0.6",
+          "scipy": "1.18.1",
+          "pydantic": "2.14.1",
+          "shapely": "2.2.0",
+          "pvlib": "0.16.1",
+          "hplib": null
+        },
+        "handler_sha256": null,
+        "engines": {},
+        "case_engines": {}
+      },
+      "handler": "builtins:dict",
+      "results": [
+        {
+          "mode": "standalone",
+          "duration_s": 62.51293687500038,
+          "full_plan_verifications": 512,
+          "verified_case_rows": 262144,
+          "case_file_reads": 262656,
+          "succeeded": 512,
+          "attempts": 512,
+          "case_identities_match": true
+        },
+        {
+          "mode": "bounded",
+          "duration_s": 5.125141665999763,
+          "full_plan_verifications": 16,
+          "verified_case_rows": 8192,
+          "case_file_reads": 8704,
+          "succeeded": 512,
+          "attempts": 512,
+          "case_identities_match": true
+        }
+      ]
+    }
+  ],
+  "interpretation": [
+    "The observed full-plan verification count fell by the batch size, while complete verification and per-case rechecks remained active.",
+    "Both routes retained the original case identities, expected stub answers and one successful attempt per case.",
+    "The 128-case timing was slightly slower for bounded dispatch. Filesystem and concurrent host activity affect these single-run timings; no timing threshold or universal speedup is claimed.",
+    "The 512-case observation demonstrates lower local repeated-verification overhead. No building models, weather, engines, network, remote filesystem or Slurm scheduler were exercised."
+  ]
+}
