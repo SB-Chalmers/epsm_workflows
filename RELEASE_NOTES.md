@@ -1,3 +1,20 @@
+# Unreleased — dataset authoring and bounded Vera execution
+
+Authoring gains `log_uniform()` marginals, the owner-backed physical bindings
+`geometry.footprint_area_m2` (Core `Footprint.scaled_to_area`),
+`envelope.element_u_value` (Core `Building.assign_element_u_value`; requires a
+Core with that operation, otherwise the capability is reported unsupported) and
+`context.synthetic` (Core `synthetic_context`, applied after final geometry;
+a supplied complete context needs `retain_existing=True`), plus
+`describe_design()` and the `epsm-evaluations describe` report. Applicability
+conditions on generated context are rejected with a diagnostic.
+
+Prepared execution accepts `run_local(indices=...)` and `--start/--stop`, and
+`VeraExecutor.submit(cases_per_task=..., array_size_limit=...)` runs contiguous
+case ranges per Slurm task; `cancel`/`resume` reach a staged remote plan. Plan
+identities, attempt records and existing defaults are unchanged. See
+docs/dataset-authoring.md and docs/vera-batches.md.
+
 # Release 0.5.0 — the Core 0.9 / Data 0.7 cohort (29 October 2026)
 
 Compatibility release. Workflows now requires Core 0.9.0 (`epsm_core>=0.9.0,<0.10`)
