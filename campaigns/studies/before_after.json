@@ -1,0 +1,22 @@
+{
+  "format": "epsm-campaign/1",
+  "kind": "before_after",
+  "name": "before-after",
+  "seed": 44,
+  "calendar_year": 2018,
+  "cities": [
+    {"slug": "gothenburg", "city": "Gothenburg", "tmy": "weather/gothenburg/tmy.epw"}
+  ],
+  "geometry": {
+    "families": ["rectangle", "L", "U", "courtyard"],
+    "real_footprints": "footprints/stock.json",
+    "real_fraction": 0.5
+  },
+  "before_after": {
+    "buildings": 40,
+    "archetypes": ["mf_se01", "mf_se02", "mf_se03", "mf_se04", "mf_se05", "mf_se06", "mf_se07"],
+    "measures": "all",
+    "context": "urban_lowrise_dense",
+    "weather_kind": "tmy"
+  }
+}

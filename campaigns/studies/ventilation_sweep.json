@@ -1,0 +1,22 @@
+{
+  "format": "epsm-campaign/1",
+  "kind": "ventilation_sweep",
+  "name": "ventilation-sweep",
+  "seed": 45,
+  "calendar_year": 2018,
+  "cities": [
+    {"slug": "gothenburg", "city": "Gothenburg", "tmy": "weather/gothenburg/tmy.epw"}
+  ],
+  "geometry": {
+    "families": ["rectangle", "L", "U", "courtyard"],
+    "real_footprints": "footprints/stock.json",
+    "real_fraction": 0.5
+  },
+  "ventilation": {
+    "buildings": 20,
+    "samples_per_building": 40,
+    "topologies": ["S", "F", "FT", "FTX"],
+    "context": "urban_lowrise_dense",
+    "weather_kind": "tmy"
+  }
+}

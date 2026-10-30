@@ -1,0 +1,21 @@
+{
+  "format": "epsm-campaign/1",
+  "kind": "weather_sweep",
+  "name": "weather-sweep",
+  "seed": 43,
+  "calendar_year": 2018,
+  "cities": [],
+  "geometry": {
+    "families": ["rectangle", "L", "U", "courtyard"],
+    "real_footprints": "footprints/stock.json",
+    "real_fraction": 0.5
+  },
+  "weather_sweep": {
+    "buildings": 40,
+    "context": "urban_lowrise_dense",
+    "weather": [
+      {"weather_id": "malmo_2014", "path": "weather/sweep/malmo_2014.epw", "calendar_year": 2014, "location": "malmo"},
+      {"weather_id": "malmo_2015", "path": "weather/sweep/malmo_2015.epw", "calendar_year": 2015, "location": "malmo"}
+    ]
+  }
+}

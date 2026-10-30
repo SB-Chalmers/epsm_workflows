@@ -1,0 +1,92 @@
+{
+  "concrete": {
+    "name": "4 in. Normalweight Concrete Wall",
+    "conductivity_w_mk": 2.308455174420426,
+    "density_kg_m3": 2322.005309227381,
+    "specific_heat_j_kgk": 831.4635397241673,
+    "roughness": "MediumRough",
+    "solar_absorptance": 0.7,
+    "thermal_absorptance": 0.9,
+    "visible_absorptance": 0.7
+  },
+  "conc_floor": {
+    "name": "100mm Normalweight concrete floor",
+    "conductivity_w_mk": 2.3089016425031033,
+    "density_kg_m3": 2322.006775596,
+    "specific_heat_j_kgk": 832.0199665271966,
+    "roughness": "MediumRough",
+    "solar_absorptance": 0.7,
+    "thermal_absorptance": 0.9,
+    "visible_absorptance": 0.7
+  },
+  "conc_roof": {
+    "name": "6 in. Heavyweight Concrete Roof",
+    "conductivity_w_mk": 2.308455174420426,
+    "density_kg_m3": 2322.005309227381,
+    "specific_heat_j_kgk": 831.4635397241673,
+    "roughness": "MediumRough",
+    "solar_absorptance": 0.7,
+    "thermal_absorptance": 0.9,
+    "visible_absorptance": 0.7
+  },
+  "conc_bsmt": {
+    "name": "8 in. Concrete Block Basement Wall",
+    "conductivity_w_mk": 1.325113229991986,
+    "density_kg_m3": 1842.0042117126811,
+    "specific_heat_j_kgk": 911.4119570053389,
+    "roughness": "MediumRough",
+    "solar_absorptance": 0.7,
+    "thermal_absorptance": 0.9,
+    "visible_absorptance": 0.7
+  },
+  "mw_old": {
+    "name": "Mineral Wool Old (created)",
+    "conductivity_w_mk": 0.042,
+    "density_kg_m3": 30.0,
+    "specific_heat_j_kgk": 840.0,
+    "roughness": "MediumRough",
+    "solar_absorptance": 0.7,
+    "thermal_absorptance": 0.9,
+    "visible_absorptance": 0.7
+  },
+  "gypsum": {
+    "name": "G01 13mm gypsum board",
+    "conductivity_w_mk": 0.15992392281605958,
+    "density_kg_m3": 800.0023344,
+    "specific_heat_j_kgk": 1090.0261589958159,
+    "roughness": "Smooth",
+    "solar_absorptance": 0.7,
+    "thermal_absorptance": 0.9,
+    "visible_absorptance": 0.5
+  },
+  "eps": {
+    "name": "I02 50mm insulation board",
+    "conductivity_w_mk": 0.029979937330135372,
+    "density_kg_m3": 43.000098319025845,
+    "specific_heat_j_kgk": 1209.2198113776988,
+    "roughness": "MediumRough",
+    "solar_absorptance": 0.6,
+    "thermal_absorptance": 0.9,
+    "visible_absorptance": 0.6
+  },
+  "roof_felt": {
+    "name": "Built-up Roofing",
+    "conductivity_w_mk": 0.15989299909405463,
+    "density_kg_m3": 1120.002560867648,
+    "specific_heat_j_kgk": 1459.0586153813556,
+    "roughness": "Rough",
+    "solar_absorptance": 0.7,
+    "thermal_absorptance": 0.9,
+    "visible_absorptance": 0.7
+  },
+  "dry_sand": {
+    "name": "Dry Sand",
+    "conductivity_w_mk": 0.33,
+    "density_kg_m3": 1555.0,
+    "specific_heat_j_kgk": 800.0,
+    "roughness": "Rough",
+    "solar_absorptance": 0.65,
+    "thermal_absorptance": 0.85,
+    "visible_absorptance": 0.65
+  }
+}
