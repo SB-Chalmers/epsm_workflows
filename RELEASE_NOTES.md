@@ -1,4 +1,8 @@
-# Unreleased — dataset authoring, bounded Vera execution and training-data campaigns
+# Release 0.6.0 — dataset authoring, bounded Vera execution and training-data campaigns (31 October 2026)
+
+Requires Core 0.10.0 (`epsm_core>=0.10.0`), which ships `Building.assign_element_u_value`,
+and Data 0.7.0 (`epsm_data>=0.7.0`). Lower bounds only, as across the EPSM siblings; the
+EPSM supported manifest records the tested combination.
 
 Authoring gains `log_uniform()` marginals, the owner-backed physical bindings
 `geometry.footprint_area_m2` (Core `Footprint.scaled_to_area`),
