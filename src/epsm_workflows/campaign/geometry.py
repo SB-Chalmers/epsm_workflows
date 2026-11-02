@@ -14,6 +14,22 @@ from shapely.geometry import Polygon, mapping, shape
 from ..records import atomic_json, digest
 
 FOOTPRINT_FORMAT = "epsm-campaign-footprints/1"
+# Core tessellates upper floors into triangles between footprint vertices and rejects
+# any surface edge under 0.010001 m, so two registry vertices that nearly touch (a
+# digitised pinch, not consecutive vertices) fail every case of that footprint at
+# preflight. Require clear spacing between all vertices of a frozen footprint.
+MIN_VERTEX_SPACING_M = 0.05
+
+
+def vertex_spacing(polygon):
+    """Smallest distance between any two distinct vertices of ``polygon``."""
+    rings = [polygon.exterior, *polygon.interiors]
+    points = np.concatenate([np.asarray(ring.coords)[:-1, :2] for ring in rings])
+    if len(points) < 2:
+        return math.inf
+    distances = np.linalg.norm(points[:, None, :] - points[None, :, :], axis=2)
+    np.fill_diagonal(distances, np.inf)
+    return float(distances.min())
 
 
 def footprint(polygon):
@@ -92,6 +108,18 @@ def normalize_scene(geometry, context, angle):
         for b in context.buildings
     )
     result = geometry.updated(parts=parts, orientation_deg=0, source_crs="local_metres")
+    # Core prepares every part footprint (1 cm simplification) before assignment and
+    # refuses a Building whose prepared outline differs from the authored one. A rotated
+    # registry outline can cross that tolerance where the unrotated one did not, so the
+    # prepared outline becomes the authored one here, where the change is recorded.
+    from epsm_core.footprint_cleanup import prepared_footprints
+
+    prepared, report = prepared_footprints(result)
+    cleaned = [part["part_id"] for part in report["parts"] if part["changed"]]
+    if cleaned:
+        result = result.updated(
+            parts=tuple(p.updated(footprint=footprint(poly)) for p, poly in zip(result.parts, prepared))
+        )
     minima = [min(p.footprint.polygon.bounds[k] for p in result.parts) for k in (0, 1)]
     if not np.allclose(minima, 0, atol=1e-8, rtol=0):
         raise ValueError("Simulation geometry must be normalized with baked orientation")
@@ -104,6 +132,7 @@ def normalize_scene(geometry, context, angle):
             "inverse_affine": inverse,
             "origin": "target_bounding_box_bottom_left",
             "units": "m",
+            "footprint_cleanup_changed": cleaned,
         },
     )
 
@@ -158,6 +187,8 @@ def freeze_footprints(records, destination, *, minimum_area_m2=250, maximum_aspe
                     reason = f"area {polygon.area:.0f} m2 below {minimum_area_m2}"
                 elif aspect > maximum_aspect or polygon.buffer(-2).is_empty:
                     reason = "too slender for a four-metre limb"
+                elif (spacing := vertex_spacing(polygon)) < MIN_VERTEX_SPACING_M:
+                    reason = f"vertices {spacing * 1000:.0f} mm apart, below {MIN_VERTEX_SPACING_M} m"
         if reason:
             rejected.append({"building_id": identifier, "reason": reason})
             continue

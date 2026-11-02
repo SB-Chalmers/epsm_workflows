@@ -198,6 +198,8 @@ def placed(building, geometry, context, facade, identifier, *, hvac=None):
     copy.facade = facade
     if hvac is not None:
         copy.hvac = hvac
+    # Vera preflight starts with this check; failing it here keeps a bad case out of the plan.
+    copy.readiness(engine="energyplus").require()
     return copy.to_dict()
 
 

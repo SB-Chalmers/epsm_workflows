@@ -46,9 +46,14 @@ def test_freeze_footprints_from_records(tmp_path):
         # Registry geometry is MultiPolygon; a shed next to the block must not hide the block.
         {"building_id": "b3", "geometry": mapping(MultiPolygon([Polygon([(0, 0), (30, 0), (30, 20), (0, 20)]),
                                                                   Polygon([(40, 0), (44, 0), (44, 4), (40, 4)])])), "facts": {}},
+        # A digitised pinch: two non-consecutive vertices 6 mm apart would give Core a
+        # ceiling triangle with a sub-centimetre edge, so the footprint is rejected.
+        {"building_id": "pinch", "geometry": mapping(Polygon([(0, 0), (30, 0), (30, 20), (15.003, 20), (15, 10),
+                                                              (14.997, 20), (0, 20)])), "facts": {}},
     ]
     report = freeze_footprints(records, tmp_path / "fp.json")
-    assert report["accepted"] == 3 and report["rejected"][0]["building_id"] == "tiny"
+    assert report["accepted"] == 3 and [r["building_id"] for r in report["rejected"]] == ["tiny", "pinch"]
+    assert report["rejected"][1]["reason"] == "vertices 6 mm apart, below 0.05 m"
     frozen = load_footprints(tmp_path / "fp.json")
     assert [f["footprint_id"] for f in frozen] == ["b1", "b2", "b3"]
     assert frozen[1]["storeys"] == 3 and frozen[1]["polygon"].bounds[:2] == (0, 0) and frozen[1]["area_m2"] == 600

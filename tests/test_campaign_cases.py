@@ -71,3 +71,23 @@ def test_schedules_shift_daily_profiles_only():
     shifted = cases.schedules("daily", 2)["occupancy_fraction"].values
     assert set(constant) == {1.0} and len(daily) == 24
     assert shifted[2:] == daily[:22] and shifted[:2] == daily[22:]
+
+
+def test_normalized_scene_adopts_core_footprint_cleanup():
+    """A rotated outline that Core's 1 cm cleanup would alter is stored already cleaned."""
+    from shapely.geometry import Polygon
+
+    from epsm_core import Building, ContextSpec
+    from epsm_workflows.campaign.geometry import normalize_scene
+
+    # A 7 mm kink on the long edge: inside Core's 1 cm simplification once rotated.
+    kinked = Polygon([(0, 0), (15, 0.007), (30, 0), (30, 20), (0, 20)])
+    building = Building.from_footprint(kinked, identifier="kink", storeys=3, storey_height_m=2.8)
+    normalized, context, transform = normalize_scene(building.geometry, ContextSpec(buildings=()), 37.0)
+    assert transform["footprint_cleanup_changed"] == [normalized.parts[0].identifier]
+    assert len(normalized.parts[0].footprint.exterior) == 4
+    assert context.buildings == ()
+    building.geometry = normalized
+    assert "footprint cleanup" not in " ".join(building.readiness(purpose="geometry").unsupported)
+    square = Building.from_footprint(Polygon([(0, 0), (30, 0), (30, 20), (0, 20)]), identifier="sq", storeys=3, storey_height_m=2.8)
+    assert normalize_scene(square.geometry, ContextSpec(buildings=()), 37.0)[2]["footprint_cleanup_changed"] == []
