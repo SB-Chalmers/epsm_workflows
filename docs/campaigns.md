@@ -34,7 +34,11 @@ Paths are relative to the file. The templates in `campaigns/studies/` are the
 four studies agreed with the training-data consumer; copy one and edit counts,
 bounds, cities or measures. `epsm-campaign validate study.json` prints the
 identity; the identity is the digest of the file, so an edited study is a new
-campaign.
+campaign. The sampled designs themselves depend on the authoring platform and
+SciPy build (the `random-cd` LHS optimisation is not bit-identical across
+macOS/arm64, Linux/x86_64 or SciPy minor versions), so pack once and ship the
+package: `plan.json` records `plan_sha256` and `manifest.json` the versions that
+authored it, and Vera only ever runs the frozen `plan.duckdb`.
 
 ```json
 {

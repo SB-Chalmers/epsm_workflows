@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: MIT
 """Frozen study definitions for Vera training-data campaigns.
 
-A study is one JSON document. Its digest is the campaign identity, so the same
-file always plans the same cases. Paths are resolved against the study file.
+A study is one JSON document. Its digest is the campaign identity; the same file
+plans the same cases on one authoring platform and SciPy build, and the packed
+plan records its own digest. Paths are resolved against the study file.
 """
 from __future__ import annotations
 

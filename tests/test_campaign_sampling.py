@@ -1,11 +1,13 @@
-"""The stock sampler reproduces its strata, balance and identity across machines."""
+"""The stock sampler reproduces its strata and balance everywhere, its identity per platform."""
 
 import hashlib
 import json
+import platform
+import sys
 
 import pytest
 
-pytest.importorskip("scipy")
+scipy = pytest.importorskip("scipy")
 from shapely.geometry import Polygon
 
 from epsm_workflows.campaign.sampling import (
@@ -25,8 +27,14 @@ from epsm_workflows.campaign.study import (
 
 CITIES = [{"slug": s, "city": s, "tmy": f"{s}.epw"} for s in ("malmo", "gothenburg", "uddevalla", "umea", "ritsem")]
 # Digest of (design_id, requested inputs, pilot) for the 2026-09 Vera configuration with ten
-# real footprints standing in for its ten templates; verified bit-stable on SciPy 1.10-1.18.
-VERA_60K_DESIGN_DIGEST = "27970aa24dceb9667660ca34596e91c8663b9e8087c90107d338a16430200c9e"
+# real footprints standing in for its ten templates. SciPy's random-cd LHS optimisation is
+# deterministic per platform and SciPy minor version, not across them, so the pin is keyed.
+VERA_60K_DESIGN_DIGESTS = {
+    ("darwin", "arm64", "1.18"): "27970aa24dceb9667660ca34596e91c8663b9e8087c90107d338a16430200c9e",
+    ("linux", "x86_64", "1.18"): "d577edced1b69703649414f09a680476f7b864cc2b08e280f6ea298078149200",
+    ("linux", "x86_64", "1.17"): "34d0921c3afe15c2ea110ba5c06fd9b3f4d0050322eecb19d6fa95f6a6479899",
+}
+PLATFORM_KEY = (sys.platform, platform.machine(), ".".join(scipy.__version__.split(".")[:2]))
 
 
 def footprints(count):
@@ -54,7 +62,10 @@ def test_vera_60k_design_identity_is_pinned():
     assert len(designs) == 9200
     assert sum(d["pilot"] for d in designs) == 14
     blob = json.dumps([[d["design_id"], d["requested"], d["pilot"]] for d in designs], sort_keys=True).encode()
-    assert hashlib.sha256(blob).hexdigest() == VERA_60K_DESIGN_DIGEST
+    digest = hashlib.sha256(blob).hexdigest()
+    if PLATFORM_KEY not in VERA_60K_DESIGN_DIGESTS:
+        pytest.skip(f"No pinned design digest for {PLATFORM_KEY}; computed {digest}")
+    assert digest == VERA_60K_DESIGN_DIGESTS[PLATFORM_KEY]
 
 
 def test_small_study_keeps_strata_balance_and_bounds():
