@@ -108,6 +108,18 @@ def normalize_scene(geometry, context, angle):
         for b in context.buildings
     )
     result = geometry.updated(parts=parts, orientation_deg=0, source_crs="local_metres")
+    # Core prepares every part footprint (1 cm simplification) before assignment and
+    # refuses a Building whose prepared outline differs from the authored one. A rotated
+    # registry outline can cross that tolerance where the unrotated one did not, so the
+    # prepared outline becomes the authored one here, where the change is recorded.
+    from epsm_core.footprint_cleanup import prepared_footprints
+
+    prepared, report = prepared_footprints(result)
+    cleaned = [part["part_id"] for part in report["parts"] if part["changed"]]
+    if cleaned:
+        result = result.updated(
+            parts=tuple(p.updated(footprint=footprint(poly)) for p, poly in zip(result.parts, prepared))
+        )
     minima = [min(p.footprint.polygon.bounds[k] for p in result.parts) for k in (0, 1)]
     if not np.allclose(minima, 0, atol=1e-8, rtol=0):
         raise ValueError("Simulation geometry must be normalized with baked orientation")
@@ -120,6 +132,7 @@ def normalize_scene(geometry, context, angle):
             "inverse_affine": inverse,
             "origin": "target_bounding_box_bottom_left",
             "units": "m",
+            "footprint_cleanup_changed": cleaned,
         },
     )
 
