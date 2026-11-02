@@ -61,6 +61,8 @@ def test_pack_builds_plan_weather_readme_and_archive(tmp_path, calendar_epw, cor
         {"building_id": f"r{i}", "geometry": mapping(Polygon([(0, 0), (30 + i, 0), (30 + i, 20), (0, 20)])), "facts": {"storeys": 3}}
         for i in range(2)
     ]
+    # A 3600 m2 block is real but outside the sampled area bounds, so pack leaves it out.
+    records.append({"building_id": "huge", "geometry": mapping(Polygon([(0, 0), (60, 0), (60, 60), (0, 60)])), "facts": {}})
     freeze_footprints(records, tmp_path / "fp.json")
     study_path = write_study(tmp_path, calendar_epw, footprints="fp.json")
     study = load_study(study_path)
@@ -76,6 +78,7 @@ def test_pack_builds_plan_weather_readme_and_archive(tmp_path, calendar_epw, cor
                                             "vera.sh", "weather.json", "footprints.json", "weather/malmo/tmy.epw")} <= set(names)
     manifest = json.loads((root / "manifest.json").read_text())
     assert manifest["study_id"] == study.id and manifest["plan"]["runs"] == 16
+    assert manifest["footprints_used"] == 2 and manifest["footprints_excluded_by_area"] == 1
     readme = (root / "README.md").read_text()
     assert "sbatch vera.sh" in readme and study.id in readme
     plan = duckdb.connect(str(root / "plan.duckdb"), read_only=True)
