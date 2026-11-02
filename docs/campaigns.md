@@ -56,8 +56,11 @@ Real footprints come from portable EPSM records: export them with `epsm_db`
 footprints/stock.json`. Registry geometry arrives as MultiPolygon; the largest
 part is kept and `source_parts` says how many there were. Geometry is cleaned
 with Core's `prepare_geometry`, localised and frozen; rejected records (area
-below 250 m², slender limbs, preparation failures) are listed, not dropped
-silently. Records with `facts.storeys` keep their storeys; without it the
+below 250 m², slender limbs, preparation failures, any two vertices closer
+than 0.05 m) are listed, not dropped silently. The vertex-spacing rule exists
+because Core tessellates upper floors between footprint vertices and rejects
+surface edges under 0.010001 m, so a digitised pinch fails every case of that
+footprint at preflight. Records with `facts.storeys` keep their storeys; without it the
 sampler draws floors as for procedural footprints.
 Footprints with a courtyard hole use EnergyPlus's prescribed 18 °C ground
 temperature because Kiva cannot model holed floors; `input_ground_method` records

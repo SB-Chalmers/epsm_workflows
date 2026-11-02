@@ -10,6 +10,10 @@ the study's sampled `footprint_area_m2` bounds and records `footprints_used` and
 check on the first oversized block. In a stock study each city now draws its
 real footprints from its own interleaved share of the pool, so a national pool
 yields distinct real buildings per city (the first 60k pack reused 900 of 4,813).
+`freeze_footprints` rejects a footprint whose vertices lie closer than 0.05 m
+(reason `vertices N mm apart`): Core tessellates upper floors between footprint
+vertices and refuses edges under 0.010001 m, so a digitised pinch failed every
+case of that footprint at Vera preflight (8 of 4,870 registry footprints).
 
 # Release 0.6.1 — campaign fixes from the first Vera smoke run (2 November 2026)
 

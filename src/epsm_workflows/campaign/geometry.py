@@ -14,6 +14,22 @@ from shapely.geometry import Polygon, mapping, shape
 from ..records import atomic_json, digest
 
 FOOTPRINT_FORMAT = "epsm-campaign-footprints/1"
+# Core tessellates upper floors into triangles between footprint vertices and rejects
+# any surface edge under 0.010001 m, so two registry vertices that nearly touch (a
+# digitised pinch, not consecutive vertices) fail every case of that footprint at
+# preflight. Require clear spacing between all vertices of a frozen footprint.
+MIN_VERTEX_SPACING_M = 0.05
+
+
+def vertex_spacing(polygon):
+    """Smallest distance between any two distinct vertices of ``polygon``."""
+    rings = [polygon.exterior, *polygon.interiors]
+    points = np.concatenate([np.asarray(ring.coords)[:-1, :2] for ring in rings])
+    if len(points) < 2:
+        return math.inf
+    distances = np.linalg.norm(points[:, None, :] - points[None, :, :], axis=2)
+    np.fill_diagonal(distances, np.inf)
+    return float(distances.min())
 
 
 def footprint(polygon):
@@ -158,6 +174,8 @@ def freeze_footprints(records, destination, *, minimum_area_m2=250, maximum_aspe
                     reason = f"area {polygon.area:.0f} m2 below {minimum_area_m2}"
                 elif aspect > maximum_aspect or polygon.buffer(-2).is_empty:
                     reason = "too slender for a four-metre limb"
+                elif (spacing := vertex_spacing(polygon)) < MIN_VERTEX_SPACING_M:
+                    reason = f"vertices {spacing * 1000:.0f} mm apart, below {MIN_VERTEX_SPACING_M} m"
         if reason:
             rejected.append({"building_id": identifier, "reason": reason})
             continue
