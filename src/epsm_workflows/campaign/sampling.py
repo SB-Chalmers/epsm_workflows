@@ -160,9 +160,12 @@ def stock_designs(study, footprints):
     for cohort, city_labels, designs, pool in cohorts:
         counts = allocation(designs, families, pool, geometry.real_fraction)
         for city in city_labels:
+            # Each city draws from its own interleaved share of the pool, so a large
+            # pool yields distinct real buildings per city instead of one shared head.
+            city_pool = pool[cities.index(city) :: len(cities)] if city is not None and len(pool) >= len(cities) else pool
             for family, n in counts.items():
                 yield from stratum_designs(
-                    study.seed, cohort, city, family, n, pool, section.bounds, pilot_cohort=cohort == "anchors"
+                    study.seed, cohort, city, family, n, city_pool, section.bounds, pilot_cohort=cohort == "anchors"
                 )
 
 

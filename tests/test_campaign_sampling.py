@@ -94,6 +94,18 @@ def test_small_study_keeps_strata_balance_and_bounds():
     assert sum(d["pilot"] for d in anchors) == 4 + 3
 
 
+def test_cities_draw_distinct_real_footprints_from_a_large_pool():
+    study = vera_study(stock={"diversity_designs": 100, "anchor_designs": 0}, geometry={
+        "families": ["rectangle", "L", "U", "courtyard"], "real_footprints": "x.json", "real_fraction": 0.2})
+    designs = list(stock_designs(study, footprints(100)))
+    by_city = {}
+    for d in designs:
+        if d["geometry_source"] == "real":
+            by_city.setdefault(d["city"], set()).add(d["footprint_id"])
+    assert len(by_city) == 5 and all(len(ids) == 4 for ids in by_city.values())
+    assert len(set.union(*by_city.values())) == 20
+
+
 def test_designs_are_deterministic_and_independent_per_stratum():
     one = list(stock_designs(vera_study(stock={"diversity_designs": 100, "anchor_designs": 0}), footprints(2)))
     two = list(stock_designs(vera_study(stock={"diversity_designs": 100, "anchor_designs": 0}), footprints(2)))
