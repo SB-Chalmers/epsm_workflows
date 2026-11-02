@@ -139,8 +139,13 @@ def freeze_footprints(records, destination, *, minimum_area_m2=250, maximum_aspe
         identifier = str(data.get("building_id"))
         polygon = shape(data["geometry"]) if data.get("geometry") else None
         reason = None
+        parts = 1
+        if polygon is not None and polygon.geom_type == "MultiPolygon":
+            # Registry footprints arrive as MultiPolygon; keep the largest part and say so.
+            parts = len(polygon.geoms)
+            polygon = max(polygon.geoms, key=lambda part: part.area)
         if polygon is None or polygon.geom_type != "Polygon":
-            reason = "not a single polygon"
+            reason = "not a polygon"
         else:
             prepared = prepare_geometry(polygon)
             if prepared.status != "accepted":
@@ -166,6 +171,7 @@ def freeze_footprints(records, destination, *, minimum_area_m2=250, maximum_aspe
                 "polygon": mapping(local),
                 "source_origin_m": list(origin),
                 "storeys": int(storeys) if storeys else None,
+                "source_parts": parts,
                 "area_m2": float(local.area),
                 "polygon_sha256": digest(mapping(local)),
             }

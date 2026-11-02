@@ -9,7 +9,7 @@ pytest.importorskip("scipy")
 pytest.importorskip("duckdb")
 pytest.importorskip("epsm_core")
 import duckdb
-from shapely.geometry import Polygon, mapping
+from shapely.geometry import MultiPolygon, Polygon, mapping
 
 from epsm_workflows.campaign.__main__ import main
 from epsm_workflows.campaign.geometry import (
@@ -43,12 +43,16 @@ def test_freeze_footprints_from_records(tmp_path):
          "geometry": mapping(Polygon([(100, 100), (130, 100), (130, 120), (100, 120)])), "facts": {"storeys": 3}}},
         {"building_id": "b1", "geometry": mapping(Polygon([(0, 0), (24, 0), (24, 12), (0, 12)])), "facts": {}},
         {"building_id": "tiny", "geometry": mapping(Polygon([(0, 0), (5, 0), (5, 5), (0, 5)])), "facts": {}},
+        # Registry geometry is MultiPolygon; a shed next to the block must not hide the block.
+        {"building_id": "b3", "geometry": mapping(MultiPolygon([Polygon([(0, 0), (30, 0), (30, 20), (0, 20)]),
+                                                                  Polygon([(40, 0), (44, 0), (44, 4), (40, 4)])])), "facts": {}},
     ]
     report = freeze_footprints(records, tmp_path / "fp.json")
-    assert report["accepted"] == 2 and report["rejected"][0]["building_id"] == "tiny"
+    assert report["accepted"] == 3 and report["rejected"][0]["building_id"] == "tiny"
     frozen = load_footprints(tmp_path / "fp.json")
-    assert [f["footprint_id"] for f in frozen] == ["b1", "b2"]
+    assert [f["footprint_id"] for f in frozen] == ["b1", "b2", "b3"]
     assert frozen[1]["storeys"] == 3 and frozen[1]["polygon"].bounds[:2] == (0, 0) and frozen[1]["area_m2"] == 600
+    assert frozen[2]["area_m2"] == 600 and frozen[2]["source_parts"] == 2 and frozen[0]["source_parts"] == 1
     assert json.loads((tmp_path / "fp.json").read_text())["format"] == FOOTPRINT_FORMAT
 
 
