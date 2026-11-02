@@ -1,3 +1,17 @@
+# Unreleased — campaign fixes from the first Vera smoke run
+
+Packing a `stock_diversity` study with more than one context no longer fails the
+LHS strata check (each design was counted once per context). The campaign worker
+acknowledges the approximations `epsm_rc` 0.11 requires (`airflow_policy`,
+`ground_policy="conductance_multiplier"`, `self_shadowing_policy="ignore"`), runs
+`epsm_rc.preflight` first and records the settings or the preflight diagnostics
+in `rc_diagnostics`; previously every RC column stayed NULL. `epsm-campaign pack`
+defaults to release tag `v0.6.0`. The 0.6.0 notes called the stock sampler
+row-for-row reproducible; that holds per platform and SciPy minor version only
+(SciPy's `random-cd` LHS differs between macOS/arm64, Linux/x86_64 and SciPy
+1.17/1.18), so the design-digest test is pinned per platform and the docs say to
+pack once and ship the frozen plan.
+
 # Release 0.6.0 — dataset authoring, bounded Vera execution and training-data campaigns (31 October 2026)
 
 Requires Core 0.10.0 (`epsm_core>=0.10.0`), which ships `Building.assign_element_u_value`,

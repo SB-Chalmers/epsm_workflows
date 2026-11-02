@@ -185,8 +185,9 @@ def validate_stock_sampling(root):
 
     db = duckdb.connect(str(Path(root) / "plan.duckdb"), read_only=True)
     try:
+        # One row per design: its contexts and weathers share the sampled inputs and unit point.
         rows = db.execute(
-            "SELECT DISTINCT group_id, inputs_json, metadata_json FROM runs ORDER BY group_id"
+            "SELECT group_id, any_value(inputs_json), any_value(metadata_json) FROM runs GROUP BY group_id ORDER BY group_id"
         ).fetchall()
     finally:
         db.close()

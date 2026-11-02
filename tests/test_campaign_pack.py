@@ -25,7 +25,8 @@ def write_study(tmp_path, epw, *, footprints=None):
     study = {
         "kind": "stock_diversity", "name": "tiny", "seed": 7,
         "cities": [{"slug": "malmo", "city": "Malmö", "tmy": epw.name}],
-        "contexts": [{"name": "urban_lowrise_dense", "preset": "urban_lowrise_dense"}],
+        "contexts": [{"name": "urban_lowrise_dense", "preset": "urban_lowrise_dense"},
+                     {"name": "urban_highrise_dense", "preset": "urban_highrise_dense"}],
         "geometry": {"families": ["rectangle", "L"], "real_footprints": footprints, "real_fraction": 0.5 if footprints else 0,
                      "anchor_footprints": 2},
         "stock": {"diversity_designs": 4, "anchor_designs": 4},
@@ -62,19 +63,20 @@ def test_pack_builds_plan_weather_readme_and_archive(tmp_path, calendar_epw, cor
     assert study.geometry.real_footprints == str(tmp_path / "fp.json")
     result = pack(study_path, tmp_path / "out", workers=1)
     root = tmp_path / "out" / f"tiny-{study.id[:12]}"
-    assert result["runs"] == 8 and result["groups"] == 8 and result["pilot_runs"] == 4
-    assert result["buildings"] == 8 and result["sampling_validation"]["strata"] == 6
+    # Two contexts per design: pilots run in every context, strata count each design once.
+    assert result["runs"] == 16 and result["groups"] == 8 and result["pilot_runs"] == 8
+    assert result["buildings"] == 16 and result["sampling_validation"]["strata"] == 6
     assert result["input_columns"]["ground_method"] == "VARCHAR"
     names = zipfile.ZipFile(result["archive"]).namelist()
     assert {f"{root.name}/{n}" for n in ("plan.duckdb", "plan.json", "study.json", "manifest.json", "README.md",
                                             "vera.sh", "weather.json", "footprints.json", "weather/malmo/tmy.epw")} <= set(names)
     manifest = json.loads((root / "manifest.json").read_text())
-    assert manifest["study_id"] == study.id and manifest["plan"]["runs"] == 8
+    assert manifest["study_id"] == study.id and manifest["plan"]["runs"] == 16
     readme = (root / "README.md").read_text()
     assert "sbatch vera.sh" in readme and study.id in readme
     plan = duckdb.connect(str(root / "plan.duckdb"), read_only=True)
     sources = dict(plan.execute("SELECT geometry_source,count(*) FROM runs GROUP BY 1").fetchall())
-    assert sources == {"real": 4, "synthetic": 4}
+    assert sources == {"real": 8, "synthetic": 8}
     assert plan.execute("SELECT count(*) FROM weather").fetchone()[0] == 8760
     assert json.loads(plan.execute("SELECT value FROM manifest WHERE key='study'").fetchone()[0])["name"] == "tiny"
     plan.close()

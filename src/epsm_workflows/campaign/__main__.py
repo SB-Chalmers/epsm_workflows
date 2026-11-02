@@ -23,7 +23,7 @@ def main(argv=None):
     p.add_argument("study")
     p.add_argument("destination")
     p.add_argument("--workers", type=int, default=1)
-    p.add_argument("--release-tag", default="v0.5.1")
+    p.add_argument("--release-tag", default="v0.6.0")
     p.add_argument("--no-archive", action="store_true")
 
     p = commands.add_parser("footprints", help="freeze real footprints from portable EPSM records")
