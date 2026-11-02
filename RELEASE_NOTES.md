@@ -1,4 +1,4 @@
-# Unreleased — campaign fixes from the first Vera smoke run
+# Release 0.6.1 — campaign fixes from the first Vera smoke run (2 November 2026)
 
 Packing a `stock_diversity` study with more than one context no longer fails the
 LHS strata check (each design was counted once per context). The campaign worker
