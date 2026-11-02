@@ -1,3 +1,11 @@
+# Unreleased — registry footprints
+
+`freeze_footprints` accepts the MultiPolygon geometry the EPSM stock lake exports
+(largest part kept, `source_parts` recorded) instead of rejecting every registry
+record as "not a single polygon". The case test no longer requires Core's RC
+readiness verdict, whose capability list lags epsm_rc 0.11; the worker gates on
+`epsm_rc.preflight`.
+
 # Release 0.6.1 — campaign fixes from the first Vera smoke run (2 November 2026)
 
 Packing a `stock_diversity` study with more than one context no longer fails the

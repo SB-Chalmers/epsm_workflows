@@ -53,8 +53,12 @@ authored it, and Vera only ever runs the frozen `plan.duckdb`.
 
 Real footprints come from portable EPSM records: export them with `epsm_db`
 (`record.to_dict()`), then `epsm-campaign footprints records/*.json --output
-footprints/stock.json`. Geometry is cleaned with Core's `prepare_geometry`,
-localised and frozen; rejected records are listed, not dropped silently.
+footprints/stock.json`. Registry geometry arrives as MultiPolygon; the largest
+part is kept and `source_parts` says how many there were. Geometry is cleaned
+with Core's `prepare_geometry`, localised and frozen; rejected records (area
+below 250 m², slender limbs, preparation failures) are listed, not dropped
+silently. Records with `facts.storeys` keep their storeys; without it the
+sampler draws floors as for procedural footprints.
 Footprints with a courtyard hole use EnergyPlus's prescribed 18 °C ground
 temperature because Kiva cannot model holed floors; `input_ground_method` records
 which method each run used.
