@@ -4,7 +4,10 @@
 (largest part kept, `source_parts` recorded) instead of rejecting every registry
 record as "not a single polygon". The case test no longer requires Core's RC
 readiness verdict, whose capability list lags epsm_rc 0.11; the worker gates on
-`epsm_rc.preflight`.
+`epsm_rc.preflight`. `pack` uses only the real footprints whose area lies within
+the study's sampled `footprint_area_m2` bounds and records `footprints_used` and
+`footprints_excluded_by_area` in the manifest, instead of failing the bounds
+check on the first oversized block.
 
 # Release 0.6.1 — campaign fixes from the first Vera smoke run (2 November 2026)
 

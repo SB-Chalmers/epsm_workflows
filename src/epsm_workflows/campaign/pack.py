@@ -13,7 +13,7 @@ from pathlib import Path
 from ..records import atomic_json, digest
 from .geometry import load_footprints
 from .store import create_plan, validate_stock_sampling
-from .study import load_study
+from .study import STOCK_BOUNDS, load_study
 from .weather import catalog_digest, file_sha256, freeze_weather
 
 PACKAGE_FORMAT = "epsm-campaign-package/1"
@@ -115,7 +115,15 @@ cooling, DHW and RC heating/cooling arrays), `weather`, `task_runtimes`; views
 """
 
 
-def pack(study_path, destination, *, workers=1, release_tag="v0.5.1", archive=True):
+def area_bounds(study):
+    """The footprint-area bounds the study samples within (stock bounds unless overridden)."""
+    section = study.section
+    bounds = getattr(section, "bounds", None) or getattr(section, "building_bounds", None) or STOCK_BOUNDS
+    low, high = bounds["footprint_area_m2"]
+    return float(low), float(high)
+
+
+def pack(study_path, destination, *, workers=1, release_tag="v0.6.0", archive=True):
     """Freeze a study into ``<destination>/<name>-<id12>/`` and zip it."""
     study = load_study(study_path)
     root = Path(destination).resolve() / f"{study.name}-{study.id[:12]}"
@@ -124,10 +132,17 @@ def pack(study_path, destination, *, workers=1, release_tag="v0.5.1", archive=Tr
     root.mkdir(parents=True)
     atomic_json(root / "study.json", study.to_dict())
     catalog = freeze_weather(study, root)
-    footprints = []
+    footprints, excluded = [], 0
     if study.geometry.real_footprints:
         shutil.copyfile(study.geometry.real_footprints, root / "footprints.json")
-        footprints = load_footprints(root / "footprints.json")
+        frozen = load_footprints(root / "footprints.json")
+        # Real footprints keep their area, so only those inside the study's sampled
+        # area bounds can yield in-bounds designs; the rest are left out and counted.
+        low, high = area_bounds(study)
+        footprints = [f for f in frozen if low <= f["area_m2"] <= high]
+        excluded = len(frozen) - len(footprints)
+        if not footprints:
+            raise ValueError(f"No real footprint lies within the area bounds {low}-{high} m2")
     manifest = {
         "format": PACKAGE_FORMAT,
         "study_id": study.id,
@@ -135,6 +150,8 @@ def pack(study_path, destination, *, workers=1, release_tag="v0.5.1", archive=Tr
         "kind": study.kind,
         "weather_digest": catalog_digest(catalog),
         "footprints_sha256": file_sha256(root / "footprints.json") if footprints else None,
+        "footprints_used": len(footprints),
+        "footprints_excluded_by_area": excluded,
         "authored_with": authored_with(),
         "release_tag": release_tag,
         "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
