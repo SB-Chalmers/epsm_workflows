@@ -119,3 +119,33 @@ def test_changed_weather_is_refused(tmp_path, calendar_epw, monkeypatch):
         stream.write("\n")
     with pytest.raises(ValueError, match="Frozen weather changed"):
         worker.run_task(root, "pilot-0000", "/opt/energyplus", rc=False)
+
+
+def test_run_rc_acknowledges_rc_approximations_and_records_preflight(monkeypatch, tmp_path):
+    """epsm_rc refuses silent approximations; the worker names them and keeps the diagnostics."""
+    import sys
+
+    captured = {}
+
+    class Settings:
+        @classmethod
+        def from_policy(cls, name, **overrides):
+            captured["policy"], captured["overrides"] = name, overrides
+            return cls()
+
+    def preflight(building, *, weather, settings):
+        return {"ready": building != "unready", "diagnostics": [{"code": "rc_ground", "message": "kiva"}]}
+
+    def simulate_building(building, *, weather, directory, settings):
+        return SimpleNamespace(hourly={"space_heating_demand_kwh": [1.0] * 8760, "cooling_demand_kwh": [0.0] * 8760},
+                               scalars={"peak_kw": 2.0, "label": "x"}, diagnostics={"ok": True})
+
+    monkeypatch.setitem(sys.modules, "epsm_rc", SimpleNamespace(RCSettings=Settings, preflight=preflight,
+                                                                simulate_building=simulate_building))
+    arrays, meta = worker.run_rc("unready", "weather", tmp_path)
+    assert arrays is None and meta["skipped"][0]["code"] == "rc_ground" and meta["rc_settings"] == worker.RC_SETTINGS
+    arrays, meta = worker.run_rc("ready", "weather", tmp_path)
+    assert captured == {"policy": worker.RC_POLICY, "overrides": worker.RC_SETTINGS}
+    assert set(worker.RC_SETTINGS) == {"airflow_policy", "ground_policy", "self_shadowing_policy"}
+    assert len(arrays[0]) == 8760 and meta["scalars"]["space_heating_demand_kwh"] == 8760.0
+    assert meta["scalars"]["peak_kw"] == 2.0 and "label" not in meta["scalars"] and meta["rc_policy"] == worker.RC_POLICY

@@ -28,6 +28,14 @@ from .store import open_shard, plan_info, publish_shard, task_rows, validated_ar
 from .weather import file_sha256
 
 RC_POLICY = "epsm_rc_5r1c_v1"
+# epsm_rc refuses to approximate silently; these acknowledge what the 5R1C model omits for
+# every campaign building: supply-temperature limits, Kiva/prescribed ground coupling and
+# self-shadowing of L, U and courtyard footprints (context shading is still modelled).
+RC_SETTINGS = {
+    "airflow_policy": "sensible_only_unlimited_supply",
+    "ground_policy": "conductance_multiplier",
+    "self_shadowing_policy": "ignore",
+}
 
 
 def runtime_identity(energyplus):
@@ -62,12 +70,13 @@ def rc_available():
 
 def run_rc(building, weather, directory):
     """Hourly RC heating and cooling for the same building; None when unsupported."""
-    from epsm_rc import RCSettings, simulate_building
+    from epsm_rc import RCSettings, preflight, simulate_building
 
-    readiness = building.readiness(engine="epsm_rc")
-    if not readiness.ready:
-        return None, {"skipped": list(readiness.missing), "rc_policy": RC_POLICY}
-    result = simulate_building(building, weather=weather, directory=directory, settings=RCSettings.from_policy(RC_POLICY))
+    settings = RCSettings.from_policy(RC_POLICY, **RC_SETTINGS)
+    report = preflight(building, weather=weather, settings=settings)
+    if not report["ready"]:
+        return None, {"skipped": report["diagnostics"], "rc_policy": RC_POLICY, "rc_settings": RC_SETTINGS}
+    result = simulate_building(building, weather=weather, directory=directory, settings=settings)
     arrays = [np.asarray(result.hourly[name], dtype=float) for name in ("space_heating_demand_kwh", "cooling_demand_kwh")]
     for values in arrays:
         if len(values) != 8760 or not np.isfinite(values).all():
@@ -77,7 +86,7 @@ def run_rc(building, weather, directory):
         "cooling_demand_kwh": float(arrays[1].sum()),
         **{k: float(v) for k, v in result.scalars.items() if isinstance(v, (int, float))},
     }
-    return arrays, {"scalars": scalars, "diagnostics": result.diagnostics, "rc_policy": RC_POLICY}
+    return arrays, {"scalars": scalars, "diagnostics": result.diagnostics, "rc_policy": RC_POLICY, "rc_settings": RC_SETTINGS}
 
 
 def diagnostic_bundle(root, task_id, ordinal, scratch, exc):
@@ -205,7 +214,7 @@ def run_task(root, task_id, energyplus, *, timeout=1800, checkpoint_runs=8, chec
                         try:
                             rc_arrays, rc_meta = run_rc(building, weather, scratch / "rc")
                         except Exception as exc:  # noqa: BLE001 - RC evidence is optional; keep the EnergyPlus row.
-                            rc_meta = {"error": str(exc), "rc_policy": RC_POLICY}
+                            rc_meta = {"error": str(exc), "rc_policy": RC_POLICY, "rc_settings": RC_SETTINGS}
                         rc_seconds = time.monotonic() - rc_started
                     shard.execute("BEGIN")
                     shard.execute(
