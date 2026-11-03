@@ -13,7 +13,7 @@
     "real_fraction": 0.5
   },
   "before_after": {
-    "buildings": 40,
+    "buildings": 800,
     "archetypes": ["mf_se01", "mf_se02", "mf_se03", "mf_se04", "mf_se05", "mf_se06", "mf_se07"],
     "measures": "all",
     "context": "urban_lowrise_dense",
