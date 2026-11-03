@@ -19,6 +19,51 @@ FOOTPRINT_FORMAT = "epsm-campaign-footprints/1"
 # digitised pinch, not consecutive vertices) fail every case of that footprint at
 # preflight. Require clear spacing between all vertices of a frozen footprint.
 MIN_VERTEX_SPACING_M = 0.05
+# EnergyPlus deletes a vertex it deems collinear with its neighbours and then reports
+# the zone as not enclosed (a 15-vertex registry footprint with a vertex 4 µm off its
+# neighbours' chord failed every case of the 60k study). Core's 1 cm Douglas-Peucker
+# pass measures against long chords, not neighbours, so such vertices survive it;
+# drop them here, where moving the outline by under a centimetre is immaterial.
+MAX_COLLINEAR_OFFSET_M = 0.01
+# EnergyPlus run time grows steeply with footprint vertices (median 9 s under ten,
+# minutes above a hundred) and its shadow-overlap capacity (1,000,000 figures) was
+# exhausted by registry footprints of 64, 143 and 177 vertices in dense contexts.
+MAX_VERTICES = 60
+
+
+def vertex_count(polygon):
+    return sum(len(ring.coords) - 1 for ring in (polygon.exterior, *polygon.interiors))
+
+
+def collinear_offsets(points):
+    """Distance of every vertex from the chord between its two ring neighbours."""
+    before, after = np.roll(points, 1, axis=0), np.roll(points, -1, axis=0)
+    chord = after - before
+    length = np.linalg.norm(chord, axis=1)
+    cross = chord[:, 0] * (points - before)[:, 1] - chord[:, 1] * (points - before)[:, 0]
+    return np.where(length > 0, np.abs(cross) / np.where(length > 0, length, 1), 0.0)
+
+
+def drop_collinear_vertices(polygon, tolerance=MAX_COLLINEAR_OFFSET_M):
+    """Remove, one at a time, vertices under ``tolerance`` from their neighbours' chord.
+
+    Returns the cleaned polygon and the number of vertices removed; a ring is never
+    reduced below a triangle.
+    """
+    rings, removed = [], 0
+    for ring in (polygon.exterior, *polygon.interiors):
+        points = np.asarray(ring.coords)[:-1, :2]
+        while len(points) > 3:
+            offsets = collinear_offsets(points)
+            worst = int(np.argmin(offsets))
+            if offsets[worst] >= tolerance:
+                break
+            points = np.delete(points, worst, axis=0)
+            removed += 1
+        rings.append([tuple(p) for p in points])
+    if not removed:
+        return polygon, 0
+    return Polygon(rings[0], rings[1:]), removed
 
 
 def vertex_spacing(polygon):
@@ -168,7 +213,7 @@ def freeze_footprints(records, destination, *, minimum_area_m2=250, maximum_aspe
         identifier = str(data.get("building_id"))
         polygon = shape(data["geometry"]) if data.get("geometry") else None
         reason = None
-        parts = 1
+        parts, dropped = 1, 0
         if polygon is not None and polygon.geom_type == "MultiPolygon":
             # Registry footprints arrive as MultiPolygon; keep the largest part and say so.
             parts = len(polygon.geoms)
@@ -180,15 +225,23 @@ def freeze_footprints(records, destination, *, minimum_area_m2=250, maximum_aspe
             if prepared.status != "accepted":
                 reason = f"geometry preparation {prepared.status}"
             else:
-                polygon = prepared.cleaned_geometry
+                polygon, dropped = drop_collinear_vertices(prepared.cleaned_geometry)
+                if dropped:
+                    # Core must still accept the outline it will be handed unchanged.
+                    prepared = prepare_geometry(polygon)
+                    polygon = prepared.cleaned_geometry if prepared.status == "accepted" else polygon
                 x, y, xx, yy = polygon.bounds
                 aspect = max(xx - x, yy - y) / max(min(xx - x, yy - y), 1e-9)
-                if polygon.area < minimum_area_m2:
+                if prepared.status != "accepted" or not polygon.is_valid:
+                    reason = f"geometry preparation {prepared.status} after collinear cleanup"
+                elif polygon.area < minimum_area_m2:
                     reason = f"area {polygon.area:.0f} m2 below {minimum_area_m2}"
                 elif aspect > maximum_aspect or polygon.buffer(-2).is_empty:
                     reason = "too slender for a four-metre limb"
                 elif (spacing := vertex_spacing(polygon)) < MIN_VERTEX_SPACING_M:
                     reason = f"vertices {spacing * 1000:.0f} mm apart, below {MIN_VERTEX_SPACING_M} m"
+                elif (count := vertex_count(polygon)) > MAX_VERTICES:
+                    reason = f"{count} vertices, above {MAX_VERTICES}"
         if reason:
             rejected.append({"building_id": identifier, "reason": reason})
             continue
@@ -203,6 +256,7 @@ def freeze_footprints(records, destination, *, minimum_area_m2=250, maximum_aspe
                 "source_origin_m": list(origin),
                 "storeys": int(storeys) if storeys else None,
                 "source_parts": parts,
+                "collinear_vertices_removed": dropped,
                 "area_m2": float(local.area),
                 "polygon_sha256": digest(mapping(local)),
             }
@@ -212,4 +266,8 @@ def freeze_footprints(records, destination, *, minimum_area_m2=250, maximum_aspe
         destination,
         {"format": FOOTPRINT_FORMAT, "footprints": accepted, "rejected": rejected},
     )
-    return {"accepted": len(accepted), "rejected": rejected}
+    return {
+        "accepted": len(accepted),
+        "rejected": rejected,
+        "collinear_vertices_removed": sum(item["collinear_vertices_removed"] for item in accepted),
+    }

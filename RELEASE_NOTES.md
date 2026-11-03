@@ -22,6 +22,13 @@ shard run ids to `runs` once instead of rewriting the table per shard: merging t
 60k study's 886 shards (20 GB of hourly arrays) straight onto Cephyr ran past the
 two hours every chained stage of `vera.sh` was given and was cut off. The
 `finalize` stage is now scheduled with 12 hours; the submit-only stages keep 2.
+`freeze_footprints` now removes a vertex that lies under 1 cm from the chord between
+its ring neighbours (the tip of a zero-width digitised spike, which Core's long-chord
+simplification keeps and EnergyPlus deletes before reporting the zone as not
+enclosed; `collinear_vertices_removed` counts them, 97 vertices on 78 of the 4,857
+registry footprints) and rejects a footprint with more than 60 vertices (reason
+`N vertices, above 60`; 47 registry footprints), so the two failure classes behind the
+60k study's exclusions are cleaned up at pack time.
 
 `freeze_footprints` accepts the MultiPolygon geometry the EPSM stock lake exports
 (largest part kept, `source_parts` recorded) instead of rejecting every registry

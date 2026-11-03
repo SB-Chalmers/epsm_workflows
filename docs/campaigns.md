@@ -57,10 +57,18 @@ footprints/stock.json`. Registry geometry arrives as MultiPolygon; the largest
 part is kept and `source_parts` says how many there were. Geometry is cleaned
 with Core's `prepare_geometry`, localised and frozen; rejected records (area
 below 250 m², slender limbs, preparation failures, any two vertices closer
-than 0.05 m) are listed, not dropped silently. The vertex-spacing rule exists
-because Core tessellates upper floors between footprint vertices and rejects
-surface edges under 0.010001 m, so a digitised pinch fails every case of that
-footprint at preflight. After the sampled orientation is baked in, each part
+than 0.05 m, more than 60 vertices) are listed, not dropped silently. The
+vertex-spacing rule exists because Core tessellates upper floors between
+footprint vertices and rejects surface edges under 0.010001 m, so a digitised
+pinch fails every case of that footprint at preflight. The vertex cap exists
+because EnergyPlus run time grows steeply with footprint vertices and its
+shadow-overlap capacity was exhausted by 64-, 143- and 177-vertex registry
+footprints in dense contexts (about 1 % of the registry pool is over 60).
+Vertices under 1 cm from the chord between their ring neighbours are removed
+before those checks and counted in `collinear_vertices_removed`: they are the
+tips of zero-width spikes that Core's long-chord simplification keeps, and
+EnergyPlus deletes such a vertex and then reports the zone as not enclosed.
+After the sampled orientation is baked in, each part
 outline is passed through Core's own footprint cleanup (1 cm simplification)
 and the prepared outline is stored as the authored one; the transform metadata
 lists the parts that changed (`footprint_cleanup_changed`). Without this, Core
