@@ -11,6 +11,8 @@ import json
 import math
 import os
 import shutil
+import tarfile
+import time
 from pathlib import Path
 
 import duckdb
@@ -19,6 +21,7 @@ import numpy as np
 from ..records import atomic_json, canonical, digest, json_value
 from .weather import WEATHER_FIELDS, epw_rows, file_sha256
 
+EXCLUSIONS_FORMAT = "epsm-campaign-exclusions/1"
 TARGETS = ("space_heating_demand_kwh", "cooling_demand_kwh", "dhw_load_kwh")
 SCALAR_FIELDS = (
     "space_heating_demand_kwh",
@@ -288,6 +291,63 @@ def task_rows(root, task_id):
         plan.close()
 
 
+def load_exclusions(root):
+    """Operator-recorded cases left out of the campaign, keyed by ordinal."""
+    path = Path(root) / "exclusions.json"
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text())
+    if data.get("format") != EXCLUSIONS_FORMAT:
+        raise ValueError(f"Expected {EXCLUSIONS_FORMAT} in {path}")
+    return {int(item["ordinal"]): item for item in data["excluded"]}
+
+
+def exclude_case(root, ordinal, reason):
+    """Record that one failed case stays out of the handoff, with its diagnostic bundle.
+
+    Only a case whose strict failure left a diagnostic bundle can be excluded, so
+    every exclusion is backed by the evidence the worker saved. Workers skip the
+    case, ``finalize`` moves its plan row to ``runs_excluded`` and the manifest
+    lists it; nothing is deleted.
+    """
+    root = Path(root)
+    if not str(reason).strip():
+        raise ValueError("An exclusion needs a reason")
+    plan = duckdb.connect(str(root / "plan.duckdb"), read_only=True)
+    try:
+        row = plan.execute("SELECT case_id, group_id FROM runs WHERE ordinal=?", [int(ordinal)]).fetchone()
+    finally:
+        plan.close()
+    if row is None:
+        raise ValueError(f"Unknown ordinal {ordinal}")
+    bundles = sorted((root / "diagnostics").glob(f"*-{int(ordinal):05d}.tar.gz"))
+    if not bundles:
+        raise ValueError(f"No diagnostic bundle for ordinal {ordinal}; only a recorded failure can be excluded")
+    bundle = bundles[-1]
+    error = None
+    with tarfile.open(bundle) as archive:
+        for member in archive.getmembers():
+            if member.name.endswith("failure.json"):
+                error = json.loads(archive.extractfile(member).read())["error"]
+    exclusions = load_exclusions(root)
+    record = {
+        "ordinal": int(ordinal),
+        "case_id": row[0],
+        "group_id": row[1],
+        "reason": str(reason).strip(),
+        "failure_code": error.split(":", 1)[0] if error else None,
+        "error": error,
+        "diagnostic": str(bundle.relative_to(root)),
+        "recorded_at": time.time(),
+    }
+    exclusions[int(ordinal)] = record
+    atomic_json(
+        root / "exclusions.json",
+        {"format": EXCLUSIONS_FORMAT, "excluded": [exclusions[key] for key in sorted(exclusions)]},
+    )
+    return record
+
+
 def verified_shards(root, campaign_id):
     for path in sorted((Path(root) / "shards").glob("*.duckdb")):
         db = duckdb.connect(str(path), read_only=True)
@@ -320,11 +380,13 @@ def status(root):
             if receipt.exists():
                 complete += json.loads(receipt.read_text())["complete"]
     diagnostics = root / "diagnostics"
+    excluded = len(load_exclusions(root))
     return {
         "expected": expected,
         "assigned": assigned,
         "complete": complete,
-        "remaining": expected - complete,
+        "excluded": excluded,
+        "remaining": expected - complete - excluded,
         "tasks": tasks,
         "failures": len(list(diagnostics.glob("*.tar.gz"))) if diagnostics.exists() else 0,
         "paused": (root / "PAUSE").exists(),
@@ -437,10 +499,29 @@ def finalize(root, destination, *, study_name="campaign"):
         for key, kind in sorted(info["input_columns"].items())
     )
     axes = ",".join(AXES)
+    exclusions = load_exclusions(root)
+    # SQL predicates over the plan rows; an empty NOT IN list would match nothing.
+    listed = ",".join(str(o) for o in exclusions)
+    kept = f"ordinal NOT IN ({listed})" if exclusions else "TRUE"
+    dropped = f"ordinal IN ({listed})" if exclusions else "FALSE"
     out.execute(
         f"""CREATE TABLE runs AS SELECT ordinal,case_id,sample_id,group_id,weather_id,building_key,{axes},pilot,
-        metadata_json,{columns},NULL::VARCHAR AS run_id FROM plan.runs"""
+        metadata_json,{columns},NULL::VARCHAR AS run_id FROM plan.runs WHERE {kept}"""
     )
+    # Excluded cases keep their plan row, the operator's reason and the failure evidence.
+    out.execute(
+        f"""CREATE TABLE runs_excluded AS SELECT ordinal,case_id,sample_id,group_id,weather_id,building_key,{axes},pilot,
+        metadata_json,{columns},NULL::VARCHAR AS reason,NULL::VARCHAR AS failure_code,NULL::VARCHAR AS diagnostic
+        FROM plan.runs WHERE {dropped}"""
+    )
+    for ordinal, item in exclusions.items():
+        if item["case_id"] != out.execute("SELECT case_id FROM runs_excluded WHERE ordinal=?", [ordinal]).fetchone()[0]:
+            raise ValueError(f"Exclusion of ordinal {ordinal} names a different case than the plan")
+        out.execute(
+            "UPDATE runs_excluded SET reason=?,failure_code=?,diagnostic=? WHERE ordinal=?",
+            [item["reason"], item.get("failure_code"), item.get("diagnostic"), ordinal],
+        )
+    out.execute("INSERT INTO manifest VALUES ('exclusions', ?)", [canonical([exclusions[k] for k in sorted(exclusions)])])
     scalars = ",".join(f"{name} DOUBLE" for name in SCALAR_FIELDS)
     out.execute(
         f"CREATE TABLE scalars(ordinal INTEGER PRIMARY KEY,{scalars},elapsed_seconds DOUBLE,diagnostics JSON,"
@@ -473,8 +554,21 @@ def finalize(root, destination, *, study_name="campaign"):
         out.execute(f"INSERT INTO task_runtimes SELECT task_id,runtime FROM {alias}.identity")
         out.execute(f"DETACH {alias}")
     expected = out.execute("SELECT count(*) FROM runs").fetchone()[0]
+    if seen & set(exclusions):
+        raise ValueError(f"Excluded cases have results: {sorted(seen & set(exclusions))}")
     if len(seen) != expected:
         raise ValueError(f"Shard coverage is not exhaustive: {len(seen)}/{expected}")
+    # Group counts are checked against the plan minus the exclusions; without any they
+    # must still equal the figures recorded when the package was built.
+    plan_groups = out.execute(f"SELECT count(DISTINCT group_id) FROM plan.runs WHERE {kept}").fetchone()[0]
+    plan_sizes = dict(
+        out.execute(
+            "SELECT CAST(n AS VARCHAR),count(*) FROM (SELECT group_id,count(*) n FROM plan.runs "
+            f"WHERE {kept} GROUP BY group_id) GROUP BY n"
+        ).fetchall()
+    )
+    if not exclusions and (plan_groups != info["groups"] or plan_sizes != info["group_sizes"]):
+        raise ValueError(f"Plan groups differ from the package receipt: {plan_groups} {plan_sizes}")
     out.execute(
         "CREATE VIEW training_rows AS SELECT r.* EXCLUDE(metadata_json),"
         "s.* EXCLUDE(ordinal,diagnostics,rc_diagnostics) FROM runs r JOIN scalars s USING(ordinal)"
@@ -530,8 +624,8 @@ def finalize(root, destination, *, study_name="campaign"):
         or checks["bad_weather_calendars"]
         or checks["incomplete_joins"]
         or checks["bad_scalars"]
-        or checks["groups"] != info["groups"]
-        or checks["group_sizes"] != info["group_sizes"]
+        or checks["groups"] != plan_groups
+        or checks["group_sizes"] != plan_sizes
         or checks["weather_rows"] != info["weather_rows"]
     ):
         raise ValueError(f"Final acceptance failed: {checks}")
@@ -558,6 +652,7 @@ def finalize(root, destination, *, study_name="campaign"):
         "reopened_read_only": reopened,
         "hourly_view_probe": json_value(hourly_probe),
         "training_rows": training_probe,
+        "excluded": len(exclusions),
         "sha256": checksum,
         "database": str(destination),
     }
@@ -567,6 +662,13 @@ def finalize(root, destination, *, study_name="campaign"):
         f"# EPSM {study_name} handoff\n\nSelf-contained DuckDB. `training_rows` joins predictors and scalar targets; "
         "`hourly` lazily expands the EnergyPlus heating/cooling/DHW arrays, the RC heating/cooling arrays "
         "(NULL where RC was not run) and weather. `task_runtimes` records each task's engine identities.\n"
+        + (
+            f"\n{len(exclusions)} planned case(s) were excluded by the operator after a recorded engine failure; "
+            "`runs_excluded` keeps their inputs, reason, failure code and diagnostic bundle path, and the "
+            "`exclusions` manifest entry lists them.\n"
+            if exclusions
+            else ""
+        )
     )
     removed = []
     for name in ("shards", "receipts", "locks", "weather"):

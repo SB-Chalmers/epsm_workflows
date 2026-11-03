@@ -127,6 +127,67 @@ def test_plan_shards_and_finalize_roundtrip(tmp_path, calendar_epw):
     out.close()
 
 
+def fake_bundle(root, task_id, ordinal, error):
+    import tarfile
+
+    directory = root / "diagnostics"
+    directory.mkdir(exist_ok=True)
+    failure = root / "failure.json"
+    failure.write_text(json.dumps({"error": error, "traceback": "", "time": 0}))
+    with tarfile.open(directory / f"{task_id}-{ordinal:05d}.tar.gz", "w:gz") as archive:
+        archive.add(failure, arcname="failure.json")
+    failure.unlink()
+
+
+def test_excluded_case_is_skipped_and_recorded_in_the_handoff(tmp_path, calendar_epw):
+    root, catalog = frozen(tmp_path, calendar_epw)
+    study = study_for(calendar_epw, tmp_path)
+    receipt = store.create_plan(root, study, stub_cases(6, ["a_tmy"]), catalog, {"study_id": study.id})
+    plan = duckdb.connect(str(root / "plan.duckdb"), read_only=True)
+    ordinals = plan.execute("SELECT ordinal,case_id FROM runs ORDER BY ordinal").fetchall()
+    plan.close()
+    write_shard(root, "pilot-0000", ordinals[:1], receipt["campaign_id"])
+    write_shard(root, "pilot-0001", ordinals[1:2], receipt["campaign_id"])
+    store.prepare_production_tasks(root, study, max_tasks=50)
+    with pytest.raises(ValueError, match="only a recorded failure"):
+        store.exclude_case(root, 5, "no evidence yet")
+    with pytest.raises(ValueError, match="Unknown ordinal"):
+        store.exclude_case(root, 99, "absent")
+    fake_bundle(root, "production-00000", 5, "SHADOW_COMPLEXITY_LIMIT: too many figures")
+    record = store.exclude_case(root, 5, "EnergyPlus polygon clipping capacity; dense siblings ran")
+    assert record["failure_code"] == "SHADOW_COMPLEXITY_LIMIT" and record["group_id"] == "g02"
+    assert record["diagnostic"] == "diagnostics/production-00000-00005.tar.gz"
+    assert list(store.load_exclusions(root)) == [5]
+    write_shard(root, "production-00000", ordinals[2:5], receipt["campaign_id"])
+    summary = store.status(root)
+    assert summary["complete"] == 5 and summary["excluded"] == 1 and summary["remaining"] == 0
+
+    destination = tmp_path / "handoff" / "store.duckdb"
+    verification = store.finalize(root, destination, study_name="store")
+    assert verification["training_rows"] == 5 and verification["excluded"] == 1
+    assert verification["group_sizes"] == {"2": 2, "1": 1}
+    out = duckdb.connect(str(destination), read_only=True)
+    assert out.execute("SELECT count(*) FROM runs").fetchone()[0] == 5
+    excluded = out.execute("SELECT ordinal,group_id,reason,failure_code,diagnostic FROM runs_excluded").fetchall()
+    assert excluded == [(5, "g02", record["reason"], "SHADOW_COMPLEXITY_LIMIT", record["diagnostic"])]
+    manifest = json.loads(out.execute("SELECT value FROM manifest WHERE key='exclusions'").fetchone()[0])
+    assert [item["ordinal"] for item in manifest] == [5]
+    out.close()
+    assert "1 planned case(s) were excluded" in destination.with_name("README.md").read_text()
+
+
+def test_excluded_case_with_a_result_fails_finalize(tmp_path, calendar_epw):
+    root, catalog = frozen(tmp_path, calendar_epw)
+    study = study_for(calendar_epw, tmp_path)
+    receipt = store.create_plan(root, study, stub_cases(2, ["a_tmy"]), catalog, {"study_id": study.id})
+    write_shard(root, "pilot-0000", [(0, "c0")], receipt["campaign_id"])
+    write_shard(root, "pilot-0001", [(1, "c1")], receipt["campaign_id"])
+    fake_bundle(root, "pilot-0001", 1, "EXTERNAL_ENVIRONMENT_FAILURE: timeout")
+    store.exclude_case(root, 1, "late exclusion")
+    with pytest.raises(ValueError, match="Excluded cases have results"):
+        store.finalize(root, tmp_path / "x.duckdb")
+
+
 def test_validated_arrays_reject_short_or_inconsistent_results():
     result = fake_result(0)
     store.validated_arrays(result)

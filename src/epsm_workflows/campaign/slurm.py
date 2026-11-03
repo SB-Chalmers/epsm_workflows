@@ -114,7 +114,7 @@ def finished_task(root, task_id):
     if not receipt.exists():
         return False
     data = json.loads(receipt.read_text())
-    return data["complete"] >= data["assigned"]
+    return data["complete"] + data.get("excluded", 0) >= data["assigned"]
 
 
 def worker_command(root, phase, energyplus, *, python=None):
@@ -239,6 +239,25 @@ def pause(root):
             subprocess.run(["scontrol", "hold", str(job)], check=False)
             held.append(job)
     return {"paused": True, "held_jobs": held, "status": status(root)}
+
+
+def resume(root):
+    """Clear a pause and cancel its held submissions so the next submit covers the rest.
+
+    Failed tasks never wrote a complete receipt, so ``submit`` (or the ``production``
+    stage of ``vera.sh``) resubmits exactly the unfinished ones; excluded cases are
+    skipped by the worker.
+    """
+    root = Path(root)
+    (root / "PAUSE").unlink(missing_ok=True)
+    cancelled = []
+    submissions = root / "submissions"
+    for record in submissions.glob("*.json") if submissions.exists() else ():
+        job = json.loads(record.read_text()).get("job_id")
+        if job and job_active(job):
+            subprocess.run(["scancel", str(job)], check=False)
+            cancelled.append(job)
+    return {"resumed": True, "cancelled_jobs": cancelled, "status": status(root)}
 
 
 def plan_summary(root):

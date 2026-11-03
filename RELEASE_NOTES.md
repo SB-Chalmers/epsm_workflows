@@ -1,4 +1,20 @@
-# Unreleased — registry footprints
+# Release 0.6.2 — operator case exclusions and registry footprints (3 November 2026)
+
+A strict EnergyPlus failure that cannot be fixed by re-running can now be left out
+of a campaign on record instead of holding it forever. `epsm-campaign exclude ROOT
+--ordinal N --reason "..."` records the case in `exclusions.json`; it requires the
+diagnostic bundle the worker saved for that failure, and stores the case id, group,
+failure code, error and bundle path with the reason. Workers skip excluded cases and
+count them in their receipts, `status` reports `excluded`, `finalize` moves the plan
+rows to a `runs_excluded` table (inputs plus reason, failure code and diagnostic),
+lists them in the handoff `manifest` (`exclusions`) and README, checks group sizes
+against the plan minus the exclusions, and refuses an excluded case that has a
+result. `epsm-campaign resume ROOT` clears `PAUSE` and cancels the held arrays so
+the `production` stage of `vera.sh` resubmits only the unfinished tasks. First
+used on the 60k stock study, where two cases of one 64-vertex registry footprint
+exceeded EnergyPlus's polygon-clipping capacity (1,000,000 overlap figures) in one
+sparse context while their dense-context siblings ran in 25 s; raising the cap only
+made EnergyPlus exhaust 4 GB.
 
 `freeze_footprints` accepts the MultiPolygon geometry the EPSM stock lake exports
 (largest part kept, `source_parts` recorded) instead of rejecting every registry
