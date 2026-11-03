@@ -132,10 +132,63 @@ def freeze_weather(study, root):
         folder.mkdir(parents=True, exist_ok=True)
         for item in study.weather_sweep.weather:
             destination = folder / f"{item.weather_id}.epw"
-            _copy(Path(item.path), destination)
-            entry(item.weather_id, destination, site=item.location, kind=item.kind, calendar_year=item.calendar_year)
+            calendar_year = item.calendar_year
+            if _epw_row_count(item.path) == 8784:
+                # Every handoff array is 8760 hours and Core simulates a leap year in
+                # full, so a measured leap year is run without 29 February under the
+                # next non-leap calendar that starts on the same weekday.
+                calendar_year = nonleap_stand_in(item.calendar_year)
+                if not destination.exists():
+                    drop_leap_day(item.path, destination, calendar_year)
+            else:
+                _copy(Path(item.path), destination)
+            entry(item.weather_id, destination, site=item.location, kind=item.kind, calendar_year=calendar_year)
+            if calendar_year != item.calendar_year:
+                catalog[item.weather_id].update(source_year=item.calendar_year, leap_day_dropped=True)
     atomic_json(root / "weather.json", catalog)
     return catalog
+
+
+def _epw_row_count(path):
+    with Path(path).open(newline="", errors="replace") as stream:
+        return sum(1 for _ in stream) - 8
+
+
+def nonleap_stand_in(year):
+    """The next non-leap year whose 1 January falls on the same weekday as ``year``'s."""
+    import calendar
+
+    weekday = calendar.weekday(year, 1, 1)
+    for candidate in range(year + 1, year + 12):
+        if not calendar.isleap(candidate) and calendar.weekday(candidate, 1, 1) == weekday:
+            return candidate
+    raise ValueError(f"No non-leap stand-in year for {year}")
+
+
+def drop_leap_day(source, destination, year):
+    """Write ``source`` (8784 rows) as an 8760-row EPW: 29 February removed, every row
+    dated ``year`` and the leap-day header flag cleared."""
+    with Path(source).open(newline="", errors="replace") as stream:
+        rows = list(csv.reader(stream))
+    headers, data = rows[:8], rows[8:]
+    if len(data) != 8784:
+        raise ValueError(f"{source}: expected 8784 EPW rows, found {len(data)}")
+    kept = [row for row in data if not (int(row[1]) == 2 and int(row[2]) == 29)]
+    if len(kept) != 8760:
+        raise ValueError(f"{source}: removing 29 February left {len(kept)} rows")
+    source_year = kept[0][0]
+    for row in kept:
+        row[0] = str(year)
+    flags = headers[4]
+    if flags[0].upper().startswith("HOLIDAYS") and len(flags) > 1:
+        flags[1] = "No"
+    # DATA PERIODS dates such as 1/1/2016 name the source year; EnergyPlus reads them.
+    headers[7] = [
+        field[: -len(source_year)] + str(year) if field.count("/") == 2 and field.endswith(source_year) else field
+        for field in headers[7]
+    ]
+    with Path(destination).open("w", newline="") as stream:
+        csv.writer(stream, lineterminator="\n").writerows(headers + kept)
 
 
 def load_climates(catalog, root):

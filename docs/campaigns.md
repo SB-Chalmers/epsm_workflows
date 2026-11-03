@@ -82,7 +82,12 @@ which method each run used.
 
 Weather is copied as given. Leaving `amy` out but naming `amy_station_id`
 compiles the measured year with `smhi2epw` during packing (install the `weather`
-extra). TMY and AMY of a city share the TMY's site coordinates.
+extra). TMY and AMY of a city share the TMY's site coordinates. A weather-sweep
+file of a measured leap year (8,784 rows) is packed without 29 February under the
+next non-leap calendar year that starts on the same weekday (2016 runs as 2021,
+2020 as 2025), because every handoff array is 8,760 hours and Core simulates a
+leap year in full; `weather.json` records `source_year` and `leap_day_dropped`
+and the weather id stays as declared.
 
 ## Packing
 

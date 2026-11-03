@@ -29,6 +29,13 @@ enclosed; `collinear_vertices_removed` counts them, 97 vertices on 78 of the 4,8
 registry footprints) and rejects a footprint with more than 60 vertices (reason
 `N vertices, above 60`; 47 registry footprints), so the two failure classes behind the
 60k study's exclusions are cleaned up at pack time.
+A weather-sweep EPW of a measured leap year (8,784 rows) is packed without 29
+February under the next non-leap calendar year that starts on the same weekday
+(2016 runs as 2021, 2020 as 2025; `nonleap_stand_in`, `drop_leap_day`): every
+handoff array is 8,760 hours and Core simulates a leap year in full. The catalog
+entry keeps `source_year` and `leap_day_dropped`; the weather id is unchanged.
+Packing a `ventilation_sweep` study no longer fails on its footprint-area bounds
+(its `bounds` are airflow inputs; `building_bounds` carry the geometry).
 
 `freeze_footprints` accepts the MultiPolygon geometry the EPSM stock lake exports
 (largest part kept, `source_parts` recorded) instead of rejecting every registry
