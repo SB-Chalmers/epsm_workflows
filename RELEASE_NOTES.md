@@ -16,6 +16,12 @@ exceeded EnergyPlus's polygon-clipping capacity (1,000,000 overlap figures) in a
 three synthetic contexts, and every case of a 15-vertex footprint with a vertex 4 µm
 off its neighbours' chord lost that vertex to EnergyPlus's collinearity cleanup and
 failed as an unenclosed zone; raising the shadow cap only made EnergyPlus exhaust 4 GB.
+`finalize` builds the handoff database on node-local scratch (`$TMPDIR`) and copies
+the checkpointed file to its destination before the atomic rename, and applies the
+shard run ids to `runs` once instead of rewriting the table per shard: merging the
+60k study's 886 shards (20 GB of hourly arrays) straight onto Cephyr ran past the
+two hours every chained stage of `vera.sh` was given and was cut off. The
+`finalize` stage is now scheduled with 12 hours; the submit-only stages keep 2.
 
 `freeze_footprints` accepts the MultiPolygon geometry the EPSM stock lake exports
 (largest part kept, `source_parts` recorded) instead of rejecting every registry

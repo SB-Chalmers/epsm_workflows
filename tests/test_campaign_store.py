@@ -83,7 +83,10 @@ def write_shard(root, task_id, rows, campaign_id, *, rc=False):
     shard.close()
 
 
-def test_plan_shards_and_finalize_roundtrip(tmp_path, calendar_epw):
+def test_plan_shards_and_finalize_roundtrip(tmp_path, calendar_epw, monkeypatch):
+    scratch = tmp_path / "node-local"
+    scratch.mkdir()
+    monkeypatch.setenv("TMPDIR", str(scratch))
     root, catalog = frozen(tmp_path, calendar_epw)
     study = study_for(calendar_epw, tmp_path)
     receipt = store.create_plan(root, study, stub_cases(6, ["a_tmy"]), catalog, {"study_id": study.id})
@@ -116,8 +119,12 @@ def test_plan_shards_and_finalize_roundtrip(tmp_path, calendar_epw):
     assert verification["training_rows"] == 6 and verification["rc_runs"] == 2
     assert destination.with_suffix(".sha256").read_text().split()[0] == verification["sha256"]
     assert not (root / "shards").exists() and not (root / "plan.duckdb").exists()
+    # Built on node-local scratch, published beside the destination, nothing left behind.
+    assert [p.name for p in scratch.iterdir() if p.name.startswith("store")] == []
+    assert sorted(p.name for p in destination.parent.iterdir() if "pending" in p.name) == []
     out = duckdb.connect(str(destination), read_only=True)
     assert out.execute("SELECT count(*) FROM buildings").fetchone()[0] == 3
+    assert out.execute("SELECT count(*) FROM runs WHERE run_id IS NULL").fetchone()[0] == 0
     assert out.execute("SELECT input_topology,input_num_floors FROM runs WHERE ordinal=0").fetchone() == ("S", 2)
     rc = out.execute("SELECT rc_space_heating_demand_kwh FROM scalars WHERE ordinal=0").fetchone()[0]
     assert rc == pytest.approx(0.5 * 8760 * 0.9)

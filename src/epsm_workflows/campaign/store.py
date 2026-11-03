@@ -483,9 +483,15 @@ def finalize(root, destination, *, study_name="campaign"):
         raise ValueError("Campaign is paused")
     info = plan_info(root)
     destination.parent.mkdir(parents=True, exist_ok=True)
+    # The database is built on node-local scratch when Slurm supplies it (writing
+    # tens of GB of hourly arrays straight onto Cephyr took hours) and copied to
+    # the destination once it is checkpointed; the rename stays atomic.
+    scratch = Path(os.environ["TMPDIR"]) if os.environ.get("TMPDIR") else destination.parent
     pending = destination.with_suffix(destination.suffix + ".pending")
-    pending.unlink(missing_ok=True)
-    out = duckdb.connect(str(pending))
+    local = scratch / pending.name
+    for stale in (pending, local, Path(str(local) + ".wal")):
+        stale.unlink(missing_ok=True)
+    out = duckdb.connect(str(local))
     if os.environ.get("TMPDIR"):
         out.execute("SET temp_directory = ?", [str(Path(os.environ["TMPDIR"]) / "duckdb-spill")])
     out.execute(f"ATTACH '{root / 'plan.duckdb'}' AS plan (READ_ONLY)")
@@ -532,6 +538,9 @@ def finalize(root, destination, *, study_name="campaign"):
         dhw_kwh DOUBLE[], rc_heating_kwh DOUBLE[], rc_cooling_kwh DOUBLE[])"""
     )
     out.execute("CREATE TABLE task_runtimes(task_id VARCHAR PRIMARY KEY, runtime JSON)")
+    # Run ids are staged and applied to ``runs`` once; updating the 60k-row table per
+    # shard rewrote it hundreds of times.
+    out.execute("CREATE TEMPORARY TABLE run_ids(ordinal INTEGER PRIMARY KEY, run_id VARCHAR)")
     seen = set()
     for number, (path, task_id, _count) in enumerate(verified_shards(root, info["campaign_id"])):
         alias = f"shard{number}"
@@ -550,9 +559,11 @@ def finalize(root, destination, *, study_name="campaign"):
         out.execute(
             f"INSERT INTO hourly_results SELECT ordinal,heating,cooling,dhw,rc_heating,rc_cooling FROM {alias}.results"
         )
-        out.execute(f"UPDATE runs SET run_id=x.run_id FROM {alias}.results x WHERE runs.ordinal=x.ordinal")
+        out.execute(f"INSERT INTO run_ids SELECT ordinal,run_id FROM {alias}.results")
         out.execute(f"INSERT INTO task_runtimes SELECT task_id,runtime FROM {alias}.identity")
         out.execute(f"DETACH {alias}")
+    out.execute("UPDATE runs SET run_id=x.run_id FROM run_ids x WHERE runs.ordinal=x.ordinal")
+    out.execute("DROP TABLE run_ids")
     expected = out.execute("SELECT count(*) FROM runs").fetchone()[0]
     if seen & set(exclusions):
         raise ValueError(f"Excluded cases have results: {sorted(seen & set(exclusions))}")
@@ -640,6 +651,11 @@ def finalize(root, destination, *, study_name="campaign"):
         raise ValueError(f"Energy reconciliation failed for {mismatch} runs")
     out.execute("CHECKPOINT")
     out.close()
+    if local != pending:
+        shutil.copyfile(local, pending)
+        with pending.open("rb") as stream:
+            os.fsync(stream.fileno())
+        local.unlink()
     os.replace(pending, destination)
     verify = duckdb.connect(str(destination), read_only=True, config={"enable_external_access": "false"})
     reopened = verify.execute("SELECT count(*) FROM runs").fetchone()[0]
