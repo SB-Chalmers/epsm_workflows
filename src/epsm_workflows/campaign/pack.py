@@ -118,7 +118,10 @@ cooling, DHW and RC heating/cooling arrays), `weather`, `task_runtimes`; views
 def area_bounds(study):
     """The footprint-area bounds the study samples within (stock bounds unless overridden)."""
     section = study.section
-    bounds = getattr(section, "bounds", None) or getattr(section, "building_bounds", None) or STOCK_BOUNDS
+    # The ventilation study's ``bounds`` are airflow inputs; its building geometry
+    # bounds live in ``building_bounds``. Take the first that bounds footprint area.
+    candidates = (getattr(section, "building_bounds", None), getattr(section, "bounds", None), STOCK_BOUNDS)
+    bounds = next(b for b in candidates if b and "footprint_area_m2" in b)
     low, high = bounds["footprint_area_m2"]
     return float(low), float(high)
 
