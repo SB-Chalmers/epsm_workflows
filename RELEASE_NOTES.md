@@ -16,6 +16,9 @@ exceeded EnergyPlus's polygon-clipping capacity (1,000,000 overlap figures) in a
 three synthetic contexts, and every case of a 15-vertex footprint with a vertex 4 µm
 off its neighbours' chord lost that vertex to EnergyPlus's collinearity cleanup and
 failed as an unenclosed zone; raising the shadow cap only made EnergyPlus exhaust 4 GB.
+`vera.sh` schedules the `finalize` stage with a 12-hour walltime (the submit-only
+stages keep 2 hours): merging the 60k study's 886 shards into the handoff on Cephyr
+ran past two hours and was cut off.
 
 `freeze_footprints` accepts the MultiPolygon geometry the EPSM stock lake exports
 (largest part kept, `source_parts` recorded) instead of rejecting every registry

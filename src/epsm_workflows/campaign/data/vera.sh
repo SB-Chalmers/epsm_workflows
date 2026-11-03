@@ -35,23 +35,24 @@ schedule_stage() {
     echo "$next stage $job scheduled after $dependency"
 }
 advance() {
-    local phase=$1 next=$2
+    local phase=$1 next=$2 walltime=$3
     cli submit "$root" --phase "$phase" --energyplus "$EPSM_ENERGYPLUS" \
         --account "$EPSM_ACCOUNT" --python "$EPSM_PYTHON" > "$TMPDIR/submission.json"
     local job
     job=$("$EPSM_PYTHON" -c 'import json,sys; print(json.load(open(sys.argv[1]))["job_id"])' \
         "$root/submissions/$phase.json")
-    schedule_stage "$next" 02:00:00 "afterok:$job"
+    schedule_stage "$next" "$walltime" "afterok:$job"
 }
 
 case "$stage" in
     preflight)
         cli preflight "$root" --energyplus "$EPSM_ENERGYPLUS" --workers "$SLURM_CPUS_PER_TASK"
-        advance pilot production
+        advance pilot production 02:00:00
         ;;
     production)
         test ! -e "$root/PAUSE"
-        advance production finalize
+        # Merging 60k cases of hourly arrays onto Cephyr took over two hours.
+        advance production finalize 12:00:00
         ;;
     finalize)
         test ! -e "$root/PAUSE"
