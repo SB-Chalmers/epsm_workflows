@@ -112,10 +112,17 @@ base, export `EPSM_PYTHON`, `EPSM_ENERGYPLUS`, `EPSM_ACCOUNT`, and
    plan database.
 
 Each task writes one shard, one receipt and one log. A strict EnergyPlus failure
-writes `PAUSE`, saves a compact diagnostic tarball and holds the array; an RC
-failure is recorded on the row. `epsm-campaign status`, `pause` and `submit`
-cover the operator's remaining needs; `epsm-campaign submit --phase production`
-after review resumes a paused campaign. Submission checks `MaxArraySize`,
+writes `PAUSE`, saves a compact diagnostic tarball under `diagnostics/` and holds
+the array; an RC failure is recorded on the row. After review, either fix the
+cause (a longer `execution.timeout_seconds` in the package's `study.json`, say)
+or leave the case out on record: `epsm-campaign exclude ROOT --ordinal N --reason
+"..."` needs that case's diagnostic bundle and writes `exclusions.json`; workers
+skip the case, and `finalize` puts its plan row in `runs_excluded` with the
+reason, failure code and bundle path, lists it in the handoff manifest and README,
+and checks group sizes against the plan minus the exclusions. Then
+`epsm-campaign resume ROOT` clears `PAUSE` and cancels the held arrays, and
+`sbatch vera.sh ROOT production` resubmits exactly the unfinished tasks and
+chains `finalize`. Submission checks `MaxArraySize`,
 `C3SE_quota` headroom (500 GiB, 5,000 entries) and the 50,000-entry budget of the
 EPSM base.
 

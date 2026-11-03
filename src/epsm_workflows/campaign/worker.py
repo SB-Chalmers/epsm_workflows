@@ -24,7 +24,7 @@ import duckdb
 import numpy as np
 
 from ..records import atomic_json, canonical, exclusive_lock
-from .store import open_shard, plan_info, publish_shard, task_rows, validated_arrays
+from .store import load_exclusions, open_shard, plan_info, publish_shard, task_rows, validated_arrays
 from .weather import file_sha256
 
 RC_POLICY = "epsm_rc_5r1c_v1"
@@ -156,6 +156,9 @@ def run_task(root, task_id, energyplus, *, timeout=1800, checkpoint_runs=8, chec
                 raise
             shard = open_shard(local_path, task_id, campaign_id, runtime)
             completed = {r[0] for r in shard.execute("SELECT ordinal FROM results").fetchall()}
+            # Operator exclusions (store.exclude_case) are skipped, never retried, and counted
+            # in the receipt so the task finishes without them.
+            excluded = {row[0] for row in rows} & set(load_exclusions(root))
             weathers = {}
             added = unpublished = 0
             last_checkpoint = time.monotonic()
@@ -183,7 +186,7 @@ def run_task(root, task_id, energyplus, *, timeout=1800, checkpoint_runs=8, chec
                     root / "receipts" / f"{task_id}.json",
                     {
                         "task_id": task_id, "assigned": len(rows), "complete": total, "added": added,
-                        "shard": str(shard_path), "drained": drained, "rc": use_rc,
+                        "excluded": len(excluded), "shard": str(shard_path), "drained": drained, "rc": use_rc,
                         "checkpointed_at": time.time(),
                     },
                 )
@@ -192,7 +195,7 @@ def run_task(root, task_id, energyplus, *, timeout=1800, checkpoint_runs=8, chec
             for ordinal, case_id, sample_id, weather_id, building_json in rows:
                 if stop or (root / "PAUSE").exists():
                     break
-                if ordinal in completed:
+                if ordinal in completed or ordinal in excluded:
                     continue
                 scratch = scratch_base / f"epsm-{task_id}-{ordinal}-{os.getpid()}"
                 if scratch.exists():

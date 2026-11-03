@@ -95,6 +95,26 @@ def test_strict_failure_pauses_and_bundles_diagnostics(tmp_path, calendar_epw, m
         store.finalize(root, tmp_path / "x.duckdb")
 
 
+def test_excluded_case_is_skipped_and_the_task_counts_as_finished(tmp_path, calendar_epw, monkeypatch):
+    from test_campaign_store import fake_bundle
+
+    from epsm_workflows.campaign.slurm import finished_task
+
+    root, _receipt = prepared(tmp_path, calendar_epw)
+    seen = []
+    stub_engines(monkeypatch, tmp_path, fail_on="s2", seen=seen)
+    monkeypatch.setattr(worker, "hold_array", lambda: None)
+    with pytest.raises(RuntimeError, match="strict failure"):
+        worker.run_task(root, "pilot-0002", "/opt/energyplus", rc=False)
+    assert not finished_task(root, "pilot-0002")
+    store.exclude_case(root, 2, "engine capacity")
+    (root / "PAUSE").unlink()
+    outcome = worker.run_task(root, "pilot-0002", "/opt/energyplus", rc=False)
+    assert outcome == {**outcome, "assigned": 1, "complete": 0, "added": 0, "excluded": 1}
+    assert len(seen) == 1 and finished_task(root, "pilot-0002")
+    assert store.status(root)["remaining"] == 2
+
+
 def test_rc_failure_keeps_the_energyplus_row(tmp_path, calendar_epw, monkeypatch):
     root, _receipt = prepared(tmp_path, calendar_epw)
     stub_engines(monkeypatch, tmp_path)

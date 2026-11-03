@@ -77,3 +77,12 @@ def test_submit_records_job_id_and_refuses_when_paused(tmp_path, calendar_epw, m
     (root / "PAUSE").write_text("{}")
     with pytest.raises(ValueError, match="paused"):
         slurm.submit(root, study, "pilot", "/opt/ep", account="acc", run=run)
+
+    cancelled = []
+    monkeypatch.setattr(slurm, "job_active", lambda job: job == "12345")
+    monkeypatch.setattr(slurm.subprocess, "run", lambda command, **kwargs: cancelled.append(command))
+    resumed = slurm.resume(root)
+    assert resumed["cancelled_jobs"] == ["12345"] and cancelled == [["scancel", "12345"]]
+    assert not (root / "PAUSE").exists() and resumed["status"]["paused"] is False
+    monkeypatch.setattr(slurm, "job_active", lambda job: False)
+    assert slurm.submit(root, study, "pilot", "/opt/ep", account="acc", run=run)["job_id"] == "12345"

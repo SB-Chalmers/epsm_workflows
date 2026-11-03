@@ -57,6 +57,12 @@ def main(argv=None):
     p.add_argument("root")
     p = commands.add_parser("pause")
     p.add_argument("root")
+    p = commands.add_parser("exclude", help="leave one failed case out of the handoff, with its diagnostic bundle")
+    p.add_argument("root")
+    p.add_argument("--ordinal", type=int, required=True)
+    p.add_argument("--reason", required=True)
+    p = commands.add_parser("resume", help="clear a pause and cancel its held arrays before resubmitting")
+    p.add_argument("root")
     p = commands.add_parser("finalize")
     p.add_argument("root")
     p.add_argument("--destination")
@@ -107,6 +113,14 @@ def main(argv=None):
         from .slurm import pause
 
         result = pause(args.root)
+    elif args.command == "exclude":
+        from .store import exclude_case
+
+        result = exclude_case(args.root, args.ordinal, args.reason)
+    elif args.command == "resume":
+        from .slurm import resume
+
+        result = resume(args.root)
     else:
         from .store import finalize
 
