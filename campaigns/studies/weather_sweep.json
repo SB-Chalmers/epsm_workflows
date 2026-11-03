@@ -11,7 +11,7 @@
     "real_fraction": 0.5
   },
   "weather_sweep": {
-    "buildings": 40,
+    "buildings": 200,
     "context": "urban_lowrise_dense",
     "weather": [
       {"weather_id": "malmo_2014", "path": "weather/sweep/malmo_2014.epw", "calendar_year": 2014, "location": "malmo"},

@@ -13,8 +13,8 @@
     "real_fraction": 0.5
   },
   "ventilation": {
-    "buildings": 20,
-    "samples_per_building": 40,
+    "buildings": 200,
+    "samples_per_building": 100,
     "topologies": ["S", "F", "FT", "FTX"],
     "context": "urban_lowrise_dense",
     "weather_kind": "tmy"
