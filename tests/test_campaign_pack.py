@@ -1,6 +1,7 @@
 """A study file becomes one self-contained, zipped Vera package."""
 
 import json
+import math
 import zipfile
 
 import pytest
@@ -50,14 +51,32 @@ def test_freeze_footprints_from_records(tmp_path):
         # ceiling triangle with a sub-centimetre edge, so the footprint is rejected.
         {"building_id": "pinch", "geometry": mapping(Polygon([(0, 0), (30, 0), (30, 20), (15.003, 20), (15, 10),
                                                               (14.997, 20), (0, 20)])), "facts": {}},
+        # A registry outline (Core-prepared) whose vertex (3.205, 19.907) is 0.08 mm off
+        # the chord between its neighbours: the outline runs out along a line and back,
+        # a zero-width spike. Core's Douglas-Peucker pass keeps the tip, which is far from
+        # the long chords it measures against; EnergyPlus deletes it and then reports the
+        # zone as not enclosed. The freeze drops the tip and records it.
+        {"building_id": "spike", "geometry": mapping(Polygon(
+            [(0.0, 18.343), (8.951, 0.0), (20.72, 5.743), (11.769, 24.086), (3.205, 19.907), (7.449, 21.978),
+             (6.721, 23.471), (1.349, 20.851), (2.078, 19.357)])), "facts": {}},
+        # A 70-vertex outline is over the cap that keeps EnergyPlus's shadow work bounded.
+        {"building_id": "dense", "geometry": mapping(Polygon(
+            [(30 * math.cos(2 * math.pi * k / 70), 30 * math.sin(2 * math.pi * k / 70)) for k in range(70)])),
+         "facts": {}},
     ]
     report = freeze_footprints(records, tmp_path / "fp.json")
-    assert report["accepted"] == 3 and [r["building_id"] for r in report["rejected"]] == ["tiny", "pinch"]
+    assert report["accepted"] == 4 and report["collinear_vertices_removed"] == 1
+    assert [r["building_id"] for r in report["rejected"]] == ["tiny", "pinch", "dense"]
     assert report["rejected"][1]["reason"] == "vertices 6 mm apart, below 0.05 m"
+    assert report["rejected"][2]["reason"] == "70 vertices, above 60"
     frozen = load_footprints(tmp_path / "fp.json")
-    assert [f["footprint_id"] for f in frozen] == ["b1", "b2", "b3"]
+    assert [f["footprint_id"] for f in frozen] == ["b1", "b2", "b3", "spike"]
     assert frozen[1]["storeys"] == 3 and frozen[1]["polygon"].bounds[:2] == (0, 0) and frozen[1]["area_m2"] == 600
     assert frozen[2]["area_m2"] == 600 and frozen[2]["source_parts"] == 2 and frozen[0]["source_parts"] == 1
+    spike = frozen[3]["polygon"]
+    assert frozen[3]["collinear_vertices_removed"] == 1 and len(spike.exterior.coords) == 9
+    assert (3.205, 19.907) not in set(spike.exterior.coords) and spike.is_valid
+    assert all(f["collinear_vertices_removed"] == 0 for f in frozen[:3])
     assert json.loads((tmp_path / "fp.json").read_text())["format"] == FOOTPRINT_FORMAT
 
 
