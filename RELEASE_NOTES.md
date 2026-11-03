@@ -11,10 +11,11 @@ lists them in the handoff `manifest` (`exclusions`) and README, checks group siz
 against the plan minus the exclusions, and refuses an excluded case that has a
 result. `epsm-campaign resume ROOT` clears `PAUSE` and cancels the held arrays so
 the `production` stage of `vera.sh` resubmits only the unfinished tasks. First
-used on the 60k stock study, where two cases of one 64-vertex registry footprint
-exceeded EnergyPlus's polygon-clipping capacity (1,000,000 overlap figures) in one
-sparse context while their dense-context siblings ran in 25 s; raising the cap only
-made EnergyPlus exhaust 4 GB.
+used on the 60k stock study, where every case of one 64-vertex registry footprint
+exceeded EnergyPlus's polygon-clipping capacity (1,000,000 overlap figures) in all
+three synthetic contexts, and every case of a 15-vertex footprint with a vertex 4 µm
+off its neighbours' chord lost that vertex to EnergyPlus's collinearity cleanup and
+failed as an unenclosed zone; raising the shadow cap only made EnergyPlus exhaust 4 GB.
 
 `freeze_footprints` accepts the MultiPolygon geometry the EPSM stock lake exports
 (largest part kept, `source_parts` recorded) instead of rejecting every registry
