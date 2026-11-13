@@ -27,7 +27,16 @@ from ..records import atomic_json, canonical, exclusive_lock
 from .store import load_exclusions, open_shard, plan_info, publish_shard, task_rows, validated_arrays
 from .weather import file_sha256
 
+# Label recorded with every shard. The campaign keeps the ISO 13790 5R1C choices of RC's
+# former ``epsm_rc_5r1c_v1`` profile, spelled out below, so results stay comparable across
+# shards run before and after RC 0.12.0 (whose default model is ISO 52016-1).
 RC_POLICY = "epsm_rc_5r1c_v1"
+RC_MODEL = {
+    "thermal_model": "iso13790_5r1c",
+    "window_optics": "constant_shgc",
+    "solar_time": "hour_start",
+    "heat_recovery": "always",
+}
 # epsm_rc refuses to approximate silently; these acknowledge what the 5R1C model omits for
 # every campaign building: supply-temperature limits, Kiva/prescribed ground coupling and
 # self-shadowing of L, U and courtyard footprints (context shading is still modelled).
@@ -72,7 +81,7 @@ def run_rc(building, weather, directory):
     """Hourly RC heating and cooling for the same building; None when unsupported."""
     from epsm_rc import RCSettings, preflight, simulate_building
 
-    settings = RCSettings.from_policy(RC_POLICY, **RC_SETTINGS)
+    settings = RCSettings(**RC_MODEL, **RC_SETTINGS)
     report = preflight(building, weather=weather, settings=settings)
     if not report["ready"]:
         return None, {"skipped": report["diagnostics"], "rc_policy": RC_POLICY, "rc_settings": RC_SETTINGS}

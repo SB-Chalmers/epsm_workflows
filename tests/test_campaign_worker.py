@@ -148,10 +148,8 @@ def test_run_rc_acknowledges_rc_approximations_and_records_preflight(monkeypatch
     captured = {}
 
     class Settings:
-        @classmethod
-        def from_policy(cls, name, **overrides):
-            captured["policy"], captured["overrides"] = name, overrides
-            return cls()
+        def __init__(self, **choices):
+            captured["choices"] = choices
 
     def preflight(building, *, weather, settings):
         return {"ready": building != "unready", "diagnostics": [{"code": "rc_ground", "message": "kiva"}]}
@@ -165,7 +163,8 @@ def test_run_rc_acknowledges_rc_approximations_and_records_preflight(monkeypatch
     arrays, meta = worker.run_rc("unready", "weather", tmp_path)
     assert arrays is None and meta["skipped"][0]["code"] == "rc_ground" and meta["rc_settings"] == worker.RC_SETTINGS
     arrays, meta = worker.run_rc("ready", "weather", tmp_path)
-    assert captured == {"policy": worker.RC_POLICY, "overrides": worker.RC_SETTINGS}
+    assert captured == {"choices": {**worker.RC_MODEL, **worker.RC_SETTINGS}}
+    assert worker.RC_MODEL["thermal_model"] == "iso13790_5r1c"
     assert set(worker.RC_SETTINGS) == {"airflow_policy", "ground_policy", "self_shadowing_policy"}
     assert len(arrays[0]) == 8760 and meta["scalars"]["space_heating_demand_kwh"] == 8760.0
     assert meta["scalars"]["peak_kw"] == 2.0 and "label" not in meta["scalars"] and meta["rc_policy"] == worker.RC_POLICY
