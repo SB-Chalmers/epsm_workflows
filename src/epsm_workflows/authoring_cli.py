@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
 from .workflow import WorkflowSpec
 
 
-COMMANDS = {"template", "schema", "capabilities", "preview", "prepare", "resolve"}
+COMMANDS = {"template", "schema", "capabilities", "preview", "describe", "prepare", "resolve"}
 
 
 def main(argv=None):
@@ -32,9 +33,13 @@ def main(argv=None):
     else:
         if not args.specification:
             parser.error("This command needs a workflow JSON file")
-        spec = WorkflowSpec.from_dict(json.loads(Path(args.specification).read_text(encoding="utf-8")))
+        raw = Path(args.specification).read_bytes()
+        spec = WorkflowSpec.from_dict(json.loads(raw.decode("utf-8")))
         if args.command == "preview":
             result = spec.preview(check_ready=not args.structural)
+        elif args.command == "describe":
+            result = spec.describe_design(check_ready=not args.structural)
+            result["source_sha256"] = hashlib.sha256(raw).hexdigest()
         elif args.command == "prepare":
             if args.output is None:
                 parser.error("prepare needs an explicit --output directory")

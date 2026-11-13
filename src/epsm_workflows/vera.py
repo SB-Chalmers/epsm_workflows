@@ -162,11 +162,17 @@ class VeraExecutor:
         memory="4G",
         max_concurrent=None,
         retry_failed=False,
+        cases_per_task=1,
+        array_size_limit=None,
     ):
         """Submit currently unfinished remote cases as a Slurm array.
 
         Call stage first. Concurrent duplicate submissions remain safe because
         each case acquires an execution lock; completed cases are never rerun.
+        ``cases_per_task`` optionally groups contiguous case ranges into one
+        sequential worker batch. Its default retains one task per case.
+        ``array_size_limit`` is an explicit cluster limit: task indices must
+        stay below it. This operation never splits a submission into new jobs.
         """
         if not re.fullmatch(r"[A-Za-z0-9_-]+", account):
             raise ValueError("Invalid Slurm account")
@@ -182,6 +188,12 @@ class VeraExecutor:
             not isinstance(max_concurrent, int) or max_concurrent < 1
         ):
             raise ValueError("max_concurrent must be positive")
+        if type(cases_per_task) is not int or cases_per_task < 1:
+            raise ValueError("cases_per_task must be a positive integer")
+        if array_size_limit is not None and (
+            type(array_size_limit) is not int or array_size_limit < 1
+        ):
+            raise ValueError("array_size_limit must be a positive integer")
         root = Path(directory)
         manifest = read_json(root / "manifest.json")
         base = [self.python, "-m", "epsm_workflows.execution"]
@@ -195,16 +207,28 @@ class VeraExecutor:
             query.append("--retry-failed")
         indices = json.loads(self._ssh(shlex.join(query)).stdout)
         if not all(
-            isinstance(i, int) and 0 <= i < len(manifest["case_ids"]) for i in indices
+            type(i) is int and 0 <= i < len(manifest["case_ids"]) for i in indices
         ):
             raise ValueError("Remote executor returned invalid case indices")
         if not indices:
             return {"plan_id": manifest["id"], "job_id": None, "submitted": 0}
-        array = _array(indices) + (f"%{max_concurrent}" if max_concurrent else "")
-        worker = (
-            shlex.join(base + ["run", self.remote_directory])
-            + ' --index "$SLURM_ARRAY_TASK_ID"'
-        )
+        task_indices = sorted({index // cases_per_task for index in indices})
+        if array_size_limit is not None and task_indices[-1] >= array_size_limit:
+            raise ValueError(
+                "Slurm task indices exceed array_size_limit; increase cases_per_task "
+                "or supply the correct cluster limit"
+            )
+        array = _array(task_indices) + (f"%{max_concurrent}" if max_concurrent else "")
+        worker = shlex.join(base + ["run", self.remote_directory])
+        if cases_per_task == 1:
+            worker += ' --index "$SLURM_ARRAY_TASK_ID"'
+        else:
+            count = len(manifest["case_ids"])
+            end = f"(SLURM_ARRAY_TASK_ID + 1) * {cases_per_task}"
+            worker += (
+                f' --start "$((SLURM_ARRAY_TASK_ID * {cases_per_task}))"'
+                f' --stop "$(({end} < {count} ? {end} : {count}))"'
+            )
         if retry_failed:
             worker += " --retry-failed"
         args = [
@@ -232,6 +256,12 @@ class VeraExecutor:
             "host": self.host,
             "remote_directory": self.remote_directory,
         }
+        if cases_per_task != 1:
+            receipt.update(
+                cases_per_task=cases_per_task,
+                task_count=len(task_indices),
+                task_indices=task_indices,
+            )
         atomic_json(root / "submissions" / f"{job_id}.json", receipt)
         event(
             logger,
@@ -245,6 +275,39 @@ class VeraExecutor:
             details={"submitted": len(indices)},
         )
         return receipt
+
+    def _control(self, directory, operation):
+        from .execution import _manifest
+
+        manifest = _manifest(Path(directory))
+        base = [self.python, "-m", "epsm_workflows.execution"]
+        status = json.loads(
+            self._ssh(shlex.join(base + ["status", self.remote_directory])).stdout
+        )
+        if status.get("plan_id") != manifest["id"]:
+            raise ValueError("Remote plan differs from local prepared evaluations")
+        outcome = json.loads(
+            self._ssh(shlex.join(base + [operation, self.remote_directory])).stdout
+        )
+        if outcome.get("plan_id") != manifest["id"]:
+            raise ValueError("Remote plan differs from local prepared evaluations")
+        return outcome
+
+    def cancel(self, directory):
+        """Gracefully stop new remote case attempts; active evaluations finish.
+
+        Verify the remote plan first, then delegate to the existing prepared
+        executor control. Slurm jobs are not killed and attempts are retained.
+        """
+        return self._control(directory, "cancel")
+
+    def resume(self, directory):
+        """Clear remote graceful cancellation without submitting another job.
+
+        Existing array workers may continue; call ``submit`` explicitly when
+        another array is needed. Completed evaluations remain reusable.
+        """
+        return self._control(directory, "resume")
 
     def retrieve(self, directory):
         """Validate remote evidence, then merge while preserving successful cases.

@@ -180,8 +180,7 @@ def test_real_rc_and_automatic_lca_renovation_tree(tmp_path):
         directory=tmp_path / "tree",
         evaluation_options={
             "directory": tmp_path / "engine",
-            "settings": RCSettings.from_policy(
-                "epsm_rc_5r1c_v1",
+            "settings": RCSettings(
                 airflow_policy="sensible_only_unlimited_supply",
                 ground_policy="conductance_multiplier",
             ),

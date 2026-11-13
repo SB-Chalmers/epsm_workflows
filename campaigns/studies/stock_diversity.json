@@ -1,0 +1,22 @@
+{
+  "format": "epsm-campaign/1",
+  "kind": "stock_diversity",
+  "name": "stock-diversity",
+  "seed": 42,
+  "calendar_year": 2018,
+  "cities": [
+    {"slug": "malmo", "city": "Malmö", "tmy": "weather/malmo/tmy.epw", "amy": "weather/malmo/amy-2018.epw", "amy_station_id": 53300},
+    {"slug": "gothenburg", "city": "Gothenburg", "tmy": "weather/gothenburg/tmy.epw", "amy": "weather/gothenburg/amy-2018.epw", "amy_station_id": 72420},
+    {"slug": "uddevalla", "city": "Uddevalla", "tmy": "weather/uddevalla/tmy.epw", "amy": "weather/uddevalla/amy-2018.epw", "amy_station_id": 82260},
+    {"slug": "umea", "city": "Umeå", "tmy": "weather/umea/tmy.epw", "amy": "weather/umea/amy-2018.epw", "amy_station_id": 139260},
+    {"slug": "ritsem", "city": "Ritsem", "tmy": "weather/ritsem/tmy.epw", "amy": "weather/ritsem/amy-2018.epw", "amy_station_id": 177930}
+  ],
+  "geometry": {
+    "families": ["rectangle", "L", "U", "courtyard"],
+    "real_footprints": "footprints/stock.json",
+    "real_fraction": 0.5,
+    "anchor_footprints": 10
+  },
+  "execution": {"excluded_nodes": ["vera-r01-20"]},
+  "stock": {"diversity_designs": 9000, "anchor_designs": 200}
+}

@@ -43,6 +43,10 @@ class UniformDistribution(Distribution):
     kind: Literal["uniform"] = "uniform"
 
 
+class LogUniformDistribution(Distribution):
+    kind: Literal["log_uniform"] = "log_uniform"
+
+
 class NormalDistribution(Distribution):
     kind: Literal["normal"] = "normal"
     mean: float = 0
@@ -83,18 +87,27 @@ class CategoricalDistribution(DiscreteDistribution):
     kind: Literal["categorical"] = "categorical"
 
 
-Marginal = Annotated[Union[UniformDistribution, NormalDistribution, WeibullDistribution,
+Marginal = Annotated[Union[UniformDistribution, LogUniformDistribution, NormalDistribution, WeibullDistribution,
                           TriangularDistribution, LognormalDistribution,
                           DiscreteDistribution, CategoricalDistribution], Field(discriminator="kind")]
 
 _DISTRIBUTIONS = {cls.model_fields["kind"].default: cls for cls in (
-    UniformDistribution, NormalDistribution, WeibullDistribution, TriangularDistribution,
+    UniformDistribution, LogUniformDistribution, NormalDistribution, WeibullDistribution, TriangularDistribution,
     LognormalDistribution, DiscreteDistribution, CategoricalDistribution)}
 
 
 def uniform() -> Distribution:
     """Uniform probability over the input's finite bounds or choices."""
     return UniformDistribution()
+
+
+def log_uniform() -> Distribution:
+    """Equal probability per multiplicative interval within positive input bounds.
+
+    Bounds 100 to 10,000 have median 1,000. This opt-in distribution uses
+    the existing LHS and Monte Carlo probability streams.
+    """
+    return LogUniformDistribution()
 
 
 def normal(*, mean: float = 0, std: float = 1) -> Distribution:
@@ -200,6 +213,13 @@ def sample_quantile(distribution, probability, *, lower=None, upper=None,
             if probability < cumulative:
                 return value
         return choices[-1]
+    if d.kind == "log_uniform":
+        if lower is None or upper is None or not 0 < lower < upper:
+            raise ValueError("log_uniform needs increasing positive finite bounds")
+        value = math.exp(math.log(lower) + probability * (math.log(upper) - math.log(lower)))
+        # The quantile is mathematically bounded; contain interpolation roundoff
+        # at the endpoints, without clipping draws from an unbounded marginal.
+        return min(upper, max(lower, value))
     if d.kind in {"uniform", "triangular"}:
         if lower is None or upper is None or lower >= upper:
             raise ValueError("uniform and triangular domains need increasing finite bounds")

@@ -1,0 +1,122 @@
+"""A study file becomes one self-contained, zipped Vera package."""
+
+import json
+import math
+import zipfile
+
+import pytest
+
+pytest.importorskip("scipy")
+pytest.importorskip("duckdb")
+pytest.importorskip("epsm_core")
+import duckdb
+from shapely.geometry import MultiPolygon, Polygon, mapping
+
+from epsm_workflows.campaign.__main__ import main
+from epsm_workflows.campaign.geometry import (
+    FOOTPRINT_FORMAT,
+    freeze_footprints,
+    load_footprints,
+)
+from epsm_workflows.campaign.pack import pack
+from epsm_workflows.campaign.study import load_study
+
+
+def write_study(tmp_path, epw, *, footprints=None):
+    study = {
+        "kind": "stock_diversity", "name": "tiny", "seed": 7,
+        "cities": [{"slug": "malmo", "city": "Malmö", "tmy": epw.name}],
+        "contexts": [{"name": "urban_lowrise_dense", "preset": "urban_lowrise_dense"},
+                     {"name": "urban_highrise_dense", "preset": "urban_highrise_dense"}],
+        "geometry": {"families": ["rectangle", "L"], "real_footprints": footprints, "real_fraction": 0.5 if footprints else 0,
+                     "anchor_footprints": 2},
+        "stock": {"diversity_designs": 4, "anchor_designs": 4},
+    }
+    path = tmp_path / "tiny.json"
+    path.write_text(json.dumps(study))
+    (tmp_path / epw.name).write_bytes(epw.read_bytes())
+    return path
+
+
+def test_freeze_footprints_from_records(tmp_path):
+    records = [
+        {"format": "epsm-record-1", "crs": "EPSG:3006", "record": {"building_id": "b2", "dataset_id": "d",
+         "geometry": mapping(Polygon([(100, 100), (130, 100), (130, 120), (100, 120)])), "facts": {"storeys": 3}}},
+        {"building_id": "b1", "geometry": mapping(Polygon([(0, 0), (24, 0), (24, 12), (0, 12)])), "facts": {}},
+        {"building_id": "tiny", "geometry": mapping(Polygon([(0, 0), (5, 0), (5, 5), (0, 5)])), "facts": {}},
+        # Registry geometry is MultiPolygon; a shed next to the block must not hide the block.
+        {"building_id": "b3", "geometry": mapping(MultiPolygon([Polygon([(0, 0), (30, 0), (30, 20), (0, 20)]),
+                                                                  Polygon([(40, 0), (44, 0), (44, 4), (40, 4)])])), "facts": {}},
+        # A digitised pinch: two non-consecutive vertices 6 mm apart would give Core a
+        # ceiling triangle with a sub-centimetre edge, so the footprint is rejected.
+        {"building_id": "pinch", "geometry": mapping(Polygon([(0, 0), (30, 0), (30, 20), (15.003, 20), (15, 10),
+                                                              (14.997, 20), (0, 20)])), "facts": {}},
+        # A registry outline (Core-prepared) whose vertex (3.205, 19.907) is 0.08 mm off
+        # the chord between its neighbours: the outline runs out along a line and back,
+        # a zero-width spike. Core's Douglas-Peucker pass keeps the tip, which is far from
+        # the long chords it measures against; EnergyPlus deletes it and then reports the
+        # zone as not enclosed. The freeze drops the tip and records it.
+        {"building_id": "spike", "geometry": mapping(Polygon(
+            [(0.0, 18.343), (8.951, 0.0), (20.72, 5.743), (11.769, 24.086), (3.205, 19.907), (7.449, 21.978),
+             (6.721, 23.471), (1.349, 20.851), (2.078, 19.357)])), "facts": {}},
+        # A 70-vertex outline is over the cap that keeps EnergyPlus's shadow work bounded.
+        {"building_id": "dense", "geometry": mapping(Polygon(
+            [(30 * math.cos(2 * math.pi * k / 70), 30 * math.sin(2 * math.pi * k / 70)) for k in range(70)])),
+         "facts": {}},
+    ]
+    report = freeze_footprints(records, tmp_path / "fp.json")
+    assert report["accepted"] == 4 and report["collinear_vertices_removed"] == 1
+    assert [r["building_id"] for r in report["rejected"]] == ["tiny", "pinch", "dense"]
+    assert report["rejected"][1]["reason"] == "vertices 6 mm apart, below 0.05 m"
+    assert report["rejected"][2]["reason"] == "70 vertices, above 60"
+    frozen = load_footprints(tmp_path / "fp.json")
+    assert [f["footprint_id"] for f in frozen] == ["b1", "b2", "b3", "spike"]
+    assert frozen[1]["storeys"] == 3 and frozen[1]["polygon"].bounds[:2] == (0, 0) and frozen[1]["area_m2"] == 600
+    assert frozen[2]["area_m2"] == 600 and frozen[2]["source_parts"] == 2 and frozen[0]["source_parts"] == 1
+    spike = frozen[3]["polygon"]
+    assert frozen[3]["collinear_vertices_removed"] == 1 and len(spike.exterior.coords) == 9
+    assert (3.205, 19.907) not in set(spike.exterior.coords) and spike.is_valid
+    assert all(f["collinear_vertices_removed"] == 0 for f in frozen[:3])
+    assert json.loads((tmp_path / "fp.json").read_text())["format"] == FOOTPRINT_FORMAT
+
+
+def test_pack_builds_plan_weather_readme_and_archive(tmp_path, calendar_epw, core_solves_u_values):
+    records = [
+        {"building_id": f"r{i}", "geometry": mapping(Polygon([(0, 0), (30 + i, 0), (30 + i, 20), (0, 20)])), "facts": {"storeys": 3}}
+        for i in range(2)
+    ]
+    # A 3600 m2 block is real but outside the sampled area bounds, so pack leaves it out.
+    records.append({"building_id": "huge", "geometry": mapping(Polygon([(0, 0), (60, 0), (60, 60), (0, 60)])), "facts": {}})
+    freeze_footprints(records, tmp_path / "fp.json")
+    study_path = write_study(tmp_path, calendar_epw, footprints="fp.json")
+    study = load_study(study_path)
+    assert study.geometry.real_footprints == str(tmp_path / "fp.json")
+    result = pack(study_path, tmp_path / "out", workers=1)
+    root = tmp_path / "out" / f"tiny-{study.id[:12]}"
+    # Two contexts per design: pilots run in every context, strata count each design once.
+    assert result["runs"] == 16 and result["groups"] == 8 and result["pilot_runs"] == 8
+    assert result["buildings"] == 16 and result["sampling_validation"]["strata"] == 6
+    assert result["input_columns"]["ground_method"] == "VARCHAR"
+    names = zipfile.ZipFile(result["archive"]).namelist()
+    assert {f"{root.name}/{n}" for n in ("plan.duckdb", "plan.json", "study.json", "manifest.json", "README.md",
+                                            "vera.sh", "weather.json", "footprints.json", "weather/malmo/tmy.epw")} <= set(names)
+    manifest = json.loads((root / "manifest.json").read_text())
+    assert manifest["study_id"] == study.id and manifest["plan"]["runs"] == 16
+    assert manifest["footprints_used"] == 2 and manifest["footprints_excluded_by_area"] == 1
+    readme = (root / "README.md").read_text()
+    assert "sbatch vera.sh" in readme and study.id in readme
+    plan = duckdb.connect(str(root / "plan.duckdb"), read_only=True)
+    sources = dict(plan.execute("SELECT geometry_source,count(*) FROM runs GROUP BY 1").fetchall())
+    assert sources == {"real": 8, "synthetic": 8}
+    assert plan.execute("SELECT count(*) FROM weather").fetchone()[0] == 8760
+    assert json.loads(plan.execute("SELECT value FROM manifest WHERE key='study'").fetchone()[0])["name"] == "tiny"
+    plan.close()
+    with pytest.raises(FileExistsError):
+        pack(study_path, tmp_path / "out")
+
+
+def test_cli_validate_reports_identity(tmp_path, calendar_epw, capsys):
+    study_path = write_study(tmp_path, calendar_epw)
+    assert main(["validate", str(study_path)]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["kind"] == "stock_diversity" and report["cities"] == ["malmo"] and len(report["id"]) == 64
