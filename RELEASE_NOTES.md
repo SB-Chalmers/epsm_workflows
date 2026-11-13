@@ -1,4 +1,9 @@
-# Release 0.6.2 — operator case exclusions and registry footprints (3 November 2026)
+# Release 0.6.2 — operator case exclusions and registry footprints (13 November 2026)
+
+The campaign worker spells out the 5R1C choices of RC's former `epsm_rc_5r1c_v1`
+profile, so RC columns stay bit-identical under RC 0.12.0, whose default model is
+ISO 52016-1 and which deprecates `RCSettings.from_policy`. The recorded
+`rc_policy` label is unchanged.
 
 A strict EnergyPlus failure that cannot be fixed by re-running can now be left out
 of a campaign on record instead of holding it forever. `epsm-campaign exclude ROOT
