@@ -1,0 +1,98 @@
+{
+  "definition": {
+    "format": "epsm-workflow/1",
+    "template": "lhs",
+    "template_version": 1,
+    "sampling": {
+      "method": "lhs",
+      "samples": 4,
+      "seed": 19,
+      "correlation": null
+    },
+    "subjects": [],
+    "model_inputs": {},
+    "parameters": [
+      {
+        "binding": "facade.wwr",
+        "kind": "continuous",
+        "unit": "1",
+        "min": 0.1,
+        "max": 0.4,
+        "choices": null,
+        "distribution": {
+          "kind": "uniform"
+        },
+        "bounds_policy": "truncate",
+        "baseline": "inherit",
+        "scope": "shared",
+        "selector": {},
+        "applies_when": {}
+      },
+      {
+        "binding": "systems.ventilation.topology",
+        "kind": "categorical",
+        "unit": "native",
+        "min": null,
+        "max": null,
+        "choices": [
+          "F",
+          "FTX"
+        ],
+        "distribution": {
+          "kind": "uniform"
+        },
+        "bounds_policy": "truncate",
+        "baseline": "inherit",
+        "scope": "shared",
+        "selector": {},
+        "applies_when": {}
+      }
+    ],
+    "scenarios": [],
+    "weather": [],
+    "engines": [
+      "epsm_rc"
+    ],
+    "engine_settings": {},
+    "baseline": false,
+    "outputs": [
+      {
+        "name": "space_heating_demand_kwh",
+        "resolution": "hourly",
+        "required": true,
+        "level": "building",
+        "unit": "kWh"
+      },
+      {
+        "name": "delivered_energy",
+        "resolution": "annual",
+        "required": true,
+        "level": "building",
+        "unit": null
+      }
+    ],
+    "execution": {
+      "executor": "local",
+      "workers": 1
+    }
+  },
+  "id": "cb8ba336ab4f7d08cc8fac296e78ae70ed524900daf7924d14e20b0d2d35775c",
+  "samples": [
+    {
+      "facade.wwr": 0.26797694656302296,
+      "systems.ventilation.topology": "FTX"
+    },
+    {
+      "facade.wwr": 0.3540063929468388,
+      "systems.ventilation.topology": "F"
+    },
+    {
+      "facade.wwr": 0.19543017246791541,
+      "systems.ventilation.topology": "F"
+    },
+    {
+      "facade.wwr": 0.11549701622469373,
+      "systems.ventilation.topology": "FTX"
+    }
+  ]
+}

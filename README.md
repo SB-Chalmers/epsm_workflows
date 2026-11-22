@@ -48,6 +48,7 @@ weather and explicit assessment settings as shown in the workflow guide.
 - [Detailed guide](docs/guide.md)
 - [Study authoring](docs/study-authoring.md)
 - [Reusable workflows and execution](docs/reusable-workflows.md)
+- [Vera training-data campaigns](docs/campaigns.md)
 - [Worked examples](examples/README.md)
 - [Release notes](RELEASE_NOTES.md)
 

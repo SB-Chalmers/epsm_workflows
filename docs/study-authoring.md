@@ -92,3 +92,7 @@ The existing `epsm-evaluations` CLI accepts `template`, `schema`, `capabilities`
 start; `resume` explicitly permits dispatch again. Interrupted attempts remain
 recorded. Remote execution continues through public `VeraExecutor` operations;
 offline transport checks do not establish a live Slurm deployment.
+
+For owner-backed footprint/context variation, physical insulation targets and a
+compact design review, see [dataset authoring](dataset-authoring.md).
+For bounded remote dispatch, see [Vera batches](vera-batches.md).

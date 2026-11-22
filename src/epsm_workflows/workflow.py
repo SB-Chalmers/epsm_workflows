@@ -125,9 +125,12 @@ class ParameterSpec(_Definition):
 
         if not self.binding.strip():
             raise ValueError("binding must be nonempty")
-        validate_selector(self.selector)
+        validate_selector(self.selector, binding=self.binding)
         expected_unit = native_unit(self.binding)
-        if self.unit and expected_unit != "native" and self.unit != expected_unit:
+        legacy_native = self.unit == "native" and self.binding in {
+            "envelope.element_u_value", "geometry.footprint_area_m2",
+        }
+        if self.unit and expected_unit != "native" and self.unit != expected_unit and not legacy_native:
             raise ValueError(
                 f"{self.binding} uses {expected_unit}; no unit conversion is performed"
             )
@@ -173,6 +176,10 @@ class ParameterSpec(_Definition):
             raise ValueError(
                 "Integer parameters require explicit discrete probabilities or a uniform integer domain; continuous distributions are not rounded"
             )
+        if self.distribution is not None and self.distribution.kind == "log_uniform" and (
+            self.choices is not None or self.min is None or self.max is None or not 0 < self.min < self.max
+        ):
+            raise ValueError("Log-uniform parameters require increasing positive bounds")
         return self
 
 
@@ -293,7 +300,7 @@ class WorkflowDefinition(_Definition):
                 raise ValueError(
                     "Fixed inputs require value and optional selector fields"
                 )
-            validate_selector(record.get("selector", {}))
+            validate_selector(record.get("selector", {}), binding=binding)
         if len({(s.subject, s.id) for s in self.scenarios}) != len(self.scenarios):
             raise ValueError("Duplicate scenario identity for a subject")
         return self
@@ -871,8 +878,31 @@ class WorkflowSpec:
                 if _selected(v.get("selector", {}), subject)
             }
             selectors = {k: v.get("selector", {}) for k, v in d.model_inputs.items()}
+            generates_context = "context.synthetic" in fixed or any(
+                parameter.binding == "context.synthetic" and _selected(parameter.selector, subject)
+                for parameter in d.parameters
+            )
+            if generates_context:
+                pending_conditions = [
+                    (parameter.binding, dependency)
+                    for parameter in d.parameters
+                    if _selected(parameter.selector, subject)
+                    for dependency in parameter.applies_when
+                    if dependency == "context" or dependency.startswith("context.")
+                ]
+                if pending_conditions:
+                    for binding, dependency in pending_conditions:
+                        diagnostics.append(_diagnostic(
+                            "unresolved_generated_context_condition", subject.id,
+                            f"Condition {dependency!r} for {binding!r} cannot be evaluated "
+                            "before generated context resolves; remove the condition or split the design.",
+                        ))
+                    continue
+            deferred = {key: value for key, value in fixed.items()
+                        if key in {"context.synthetic", "envelope.element_u_value"}
+                        or (generates_context and (key == "context" or key.startswith("context.")))}
             try:
-                base = apply_bindings(original, fixed, selectors=selectors)
+                base = apply_bindings(original, {key: value for key, value in fixed.items() if key not in deferred}, selectors=selectors)
                 references = {
                     p.binding: p.baseline
                     for p in d.parameters
@@ -880,8 +910,8 @@ class WorkflowSpec:
                 }
                 baseline = apply_bindings(
                     base,
-                    references,
-                    selectors={p.binding: p.selector for p in d.parameters},
+                    {**(deferred if d.baseline else {}), **references},
+                    selectors={**selectors, **{p.binding: p.selector for p in d.parameters}},
                 )
             except (ValueError, TypeError) as error:
                 diagnostics.append(
@@ -939,8 +969,8 @@ class WorkflowSpec:
                             values.pop(p.binding)
                     candidate = apply_bindings(
                         base,
-                        values,
-                        selectors={p.binding: p.selector for p in d.parameters},
+                        {**deferred, **values},
+                        selectors={**selectors, **{p.binding: p.selector for p in d.parameters}},
                     )
                     alternatives.append(
                         (f"sample-{index:06d}", candidate, values, False)
@@ -1056,6 +1086,58 @@ class WorkflowSpec:
             details={"case_count": len(rows), "ready": report["ready"]},
         )
         return report
+
+    def describe_design(self, *, check_ready=True, examples=3):
+        """Describe an exact preview without returning full physical models.
+
+        Counts describe evaluations, including repeated weather/engine axes.
+        ``design_count`` counts building/scenario pairs. Numeric ranges and
+        finite-choice counts describe realized values; missing counts retain
+        inapplicable inputs. This is descriptive review, not statistical analysis.
+        ``readiness_checked=False`` explicitly means engines were not preflighted.
+        """
+        from collections import Counter
+
+        if type(examples) is not int or not 0 <= examples <= 20:
+            raise ValueError("examples must be an integer from zero to twenty")
+        report = self.preview(check_ready=check_ready)
+        rows = report["cases"]
+        summaries = {}
+        for parameter in self._definition.parameters:
+            values = [row["parameters"][parameter.binding] for row in rows if parameter.binding in row["parameters"]]
+            summary = {"kind": parameter.kind, "unit": parameter.unit,
+                       "available": len(values), "missing": len(rows) - len(values)}
+            if parameter.choices is not None or parameter.kind == "categorical":
+                counts = Counter(json.dumps(value, sort_keys=True, ensure_ascii=False) for value in values)
+                indices = {json.dumps(value, sort_keys=True, ensure_ascii=False): index
+                           for index, value in enumerate(parameter.choices or [])}
+                summary["choices"] = []
+                for encoded, count in sorted(counts.items()):
+                    value = json.loads(encoded)
+                    choice = {"count": count, "choice_index": indices[encoded]}
+                    if isinstance(value, (dict, list)):
+                        choice["choice_id"] = digest(value)
+                    else:
+                        choice["value"] = value
+                    summary["choices"].append(choice)
+            elif values:
+                summary.update(min=min(values), max=max(values))
+            summaries[parameter.binding] = summary
+        return {
+            "format": "epsm-design-preview/1", "workflow_id": report["workflow_id"],
+            "ready": report["ready"], "readiness_checked": check_ready,
+            "case_count": report["case_count"],
+            "design_count": len({(row["axes"]["building_id"], row["axes"]["scenario_id"]) for row in rows}),
+            "counts": {axis: dict(Counter(str(row["axes"][axis]) for row in rows if row["axes"].get(axis) is not None))
+                       for axis in ("building_id", "group", "weather_id", "engine")},
+            "parameters": summaries, "fixed_inputs": sorted(self._definition.model_inputs),
+            "examples": [{"axes": row["axes"], "parameters": {
+                binding: ({"value_id": digest(value), "value_type": "object" if isinstance(value, dict) else "array"}
+                          if isinstance(value, (dict, list)) else value)
+                for binding, value in row["parameters"].items()
+            }, "state_id": row["state_id"]} for row in rows[:examples]],
+            "diagnostics": report["diagnostics"],
+        }
 
     def prepare(self, directory):
         """Freeze resolved inputs through the existing schema-3 prepared executor."""

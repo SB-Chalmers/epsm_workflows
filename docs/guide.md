@@ -35,8 +35,7 @@ See [study authoring](../docs/study-authoring.md),
 from epsm_workflows import optimise_renovations
 from epsm_rc import RCSettings
 
-rc_settings = RCSettings.from_policy(
-    "epsm_rc_5r1c_v1",
+rc_settings = RCSettings(
     airflow_policy="sensible_only_unlimited_supply",
     ground_policy="conductance_multiplier",
 )
