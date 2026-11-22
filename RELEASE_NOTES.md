@@ -1,3 +1,12 @@
+# Unreleased
+
+`validation` compares models with measured EPC heating for every carrier and scores
+catalogue cohorts. `delivered_heating_estimate` converts simulated heat by efficiency
+or seasonal COP, with accounting terms scaled to the measured period, and
+`comparison_terms` reads their sourced values from Data. `classify_building`,
+`score_cohorts`, `summarise_cohorts`, `compare_cohorts` and `accepted_on_both` implement
+epsm_data's measured-data contract. Requires Data 0.8.0.
+
 # Release 0.6.2 — operator case exclusions and registry footprints (13 November 2026)
 
 The campaign worker spells out the 5R1C choices of RC's former `epsm_rc_5r1c_v1`
